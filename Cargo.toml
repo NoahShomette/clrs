@@ -1,5 +1,5 @@
 [package]
-name = "bevy_game" # ToDo
+name = "tiles_of_color"
 version = "0.1.0"
 publish = false
 authors = ["Niklas Eicker <git@nikl.me>"] # ToDo: you are the author ;)
