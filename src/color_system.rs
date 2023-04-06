@@ -1,10 +1,174 @@
-﻿use bevy::prelude::{Color, Component, FromReflect};
+﻿use crate::buildings::{Building, Pulser};
+use bevy::app::{App, Plugin};
+use bevy::prelude::{
+    Color, Commands, Component, Entity, EventReader, EventWriter, FromReflect, Mut, Query, ResMut,
+    Resource, With, Without,
+};
 use bevy::reflect::Reflect;
+use bevy::utils::HashMap;
+use bevy_ecs_tilemap::prelude::TileStorage;
+use bevy_ecs_tilemap::tiles::TilePos;
+use bevy_ggf::game_core::state::Changed;
+use bevy_ggf::mapping::terrain::TileTerrainInfo;
+use bevy_ggf::mapping::tiles::Tile;
+use bevy_ggf::mapping::MapId;
+use bevy_ggf::object::ObjectId;
+use bevy_ggf::player::PlayerMarker;
 
+pub struct ColorSystemPlugin;
 
-pub enum ColorResult{
-    
+impl Plugin for ColorSystemPlugin {
+    fn build(&self, app: &mut App) {
+        todo!()
+    }
 }
+
+/// Function that will take the tile query and the player and see if - returns whether the checked
+/// tile is the given players team
+pub fn convert_tile(
+    from_object: &ObjectId,
+    player: &usize,
+    tile_pos: TilePos,
+    tile_terrain_info: &TileTerrainInfo,
+    option: Option<(Mut<PlayerMarker>, Mut<TileColor>)>,
+    event_writer: &mut EventWriter<ColorConflictEvent>,
+) -> bool {
+    if tile_terrain_info.terrain_type.terrain_class.name.as_str() != "Colorable" {
+        return false;
+    }
+
+    if let Some((tile_player_marker, mut tile_color)) = option {
+        if player == &tile_player_marker.id() {
+            if !tile_color.max_strength() {
+                event_writer.send(ColorConflictEvent {
+                    from_object: *from_object,
+                    tile_pos,
+                    player: *player,
+                });
+            }
+            return true;
+        } else {
+            event_writer.send(ColorConflictEvent {
+                from_object: *from_object,
+                tile_pos,
+                player: *player,
+            });
+        }
+    } else {
+        event_writer.send(ColorConflictEvent {
+            from_object: *from_object,
+            tile_pos,
+            player: *player,
+        });
+    }
+    return false;
+}
+
+pub fn update_color_conflicts(
+    mut color_conflicts: ResMut<ColorConflicts>,
+    mut event_reader: EventReader<ColorConflictEvent>,
+) {
+    let events: Vec<ColorConflictEvent> = event_reader.into_iter().cloned().collect();
+    for event in events {
+        color_conflicts.register_conflict(event.tile_pos, event.player, event.from_object.id);
+    }
+    event_reader.clear();
+}
+
+pub fn handle_color_conflicts(
+    color_conflicts: ResMut<ColorConflicts>,
+    mut commands: Commands,
+    mut tiles: Query<
+        (
+            Entity,
+            &TilePos,
+            Option<(&mut PlayerMarker, &mut TileColor)>,
+        ),
+        With<Tile>,
+    >,
+    mut tile_storage_query: Query<(&MapId, &TileStorage)>,
+) {
+    for (tile_pos, player_id_vec) in color_conflicts.conflicts.iter() {
+        let mut id_hashmap: HashMap<usize, u32> = HashMap::default();
+        let mut objects: Vec<usize> = vec![];
+        for id in player_id_vec.iter() {
+            if objects.contains(&id.1) {
+                continue;
+            }
+            objects.push(id.1);
+            let count = id_hashmap.entry(id.0).or_insert(0);
+            let count = *count;
+            id_hashmap.insert(id.0, count.saturating_add(1));
+        }
+        let mut highest: (usize, u32) = (0, 0);
+        for (id, count) in id_hashmap {
+            if count > highest.1 {
+                highest.0 = id;
+                highest.1 = count;
+            }
+        }
+
+        let Some((_, tile_storage)) = tile_storage_query
+            .iter_mut()
+            .find(|(id, _)| id == &&MapId{ id: 1 })else {
+            continue;
+        };
+
+        let tile_entity = tile_storage.get(&tile_pos).unwrap();
+
+        let Ok((entity, tile_pos, options)) = tiles.get_mut(tile_entity) else {
+            continue;
+        };
+
+        match options {
+            None => {
+                commands.entity(entity).insert((
+                    TileColor {
+                        tile_color_strength: TileColorStrength::One,
+                    },
+                    PlayerMarker::new(highest.0),
+                    Changed::default(),
+                ));
+            }
+            Some((tile_player_marker, mut tile_color)) => {
+                if highest.0 == tile_player_marker.id() {
+                    tile_color.strengthen();
+                } else {
+                    tile_color.damage();
+                    if let TileColorStrength::Neutral = tile_color.tile_color_strength {
+                        commands.entity(entity).remove::<PlayerMarker>();
+                        commands.entity(entity).remove::<TileColor>();
+                    }
+                }
+                commands.entity(entity).insert(Changed::default());
+            }
+        }
+    }
+}
+
+#[derive(Default, Clone, Copy, Eq, Debug, PartialEq, Reflect, FromReflect)]
+pub struct ColorConflictEvent {
+    pub from_object: ObjectId,
+    pub tile_pos: TilePos,
+    pub player: usize,
+}
+
+#[derive(Default, Clone, Eq, Debug, PartialEq, Resource, Reflect, FromReflect)]
+pub struct ColorConflicts {
+    pub conflicts: HashMap<TilePos, Vec<(usize, usize)>>,
+}
+
+impl ColorConflicts {
+    pub fn register_conflict(&mut self, tile_pos: TilePos, player: usize, from_object: usize) {
+        if let Some(conflicts) = self.conflicts.get_mut(&tile_pos) {
+            conflicts.push((player, from_object));
+        } else {
+            self.conflicts.insert(tile_pos, vec![(player, from_object)]);
+        }
+    }
+}
+
+pub enum ColorResult {}
 
 #[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Reflect, FromReflect)]
 pub enum TileColorStrength {
@@ -17,17 +181,23 @@ pub enum TileColorStrength {
     Five,
 }
 
-
 #[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
 pub struct TileColor {
     pub tile_color_strength: TileColorStrength,
 }
 
 impl TileColor {
-    pub fn damage(&mut self){
+    pub fn max_strength(&mut self) -> bool {
+        return if self.tile_color_strength == TileColorStrength::Five {
+            true
+        } else {
+            false
+        };
+    }
+
+    pub fn damage(&mut self) {
         match self.tile_color_strength {
-            TileColorStrength::Neutral => {
-            }
+            TileColorStrength::Neutral => {}
             TileColorStrength::One => {
                 self.tile_color_strength = TileColorStrength::Neutral;
             }
@@ -46,7 +216,7 @@ impl TileColor {
         }
     }
 
-    pub fn strengthen(&mut self){
+    pub fn strengthen(&mut self) {
         match self.tile_color_strength {
             TileColorStrength::Neutral => {
                 self.tile_color_strength = TileColorStrength::One;
@@ -63,8 +233,7 @@ impl TileColor {
             TileColorStrength::Four => {
                 self.tile_color_strength = TileColorStrength::Five;
             }
-            TileColorStrength::Five => {
-            }
+            TileColorStrength::Five => {}
         }
     }
 }

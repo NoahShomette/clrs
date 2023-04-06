@@ -5,7 +5,7 @@ use bevy::app::App;
 
 use crate::buildings::pulser::simulate_pulsers;
 use crate::buildings::{Building, Pulser};
-use crate::color_system::TileColor;
+use crate::color_system::{ColorConflictEvent, ColorConflicts, handle_color_conflicts, TileColor, update_color_conflicts};
 use crate::game::draw::draw_game;
 use crate::game::state::update_game_state;
 use crate::map::MapCommandsExt;
@@ -39,7 +39,7 @@ impl Plugin for GameCorePlugin {
                 .in_schedule(CoreSchedule::FixedUpdate)
                 .run_if(in_state(GameState::Playing)),
         );
-        app.insert_resource(FixedTime::new_from_secs(1.0));
+        app.insert_resource(FixedTime::new_from_secs(0.1));
     }
 }
 
@@ -58,6 +58,8 @@ fn simulate_game(world: &mut World) {
 
 #[derive(Default, Clone, Eq, Debug, PartialEq, Resource, Reflect, FromReflect)]
 pub struct GameData {
+    pub map_size_x: u32,
+    pub map_size_y: u32,
     pub object_classes: HashMap<String, ObjectClass>,
     pub object_groups: HashMap<String, ObjectGroup>,
     pub object_types: HashMap<String, ObjectType>,
@@ -154,6 +156,9 @@ pub fn start_game(world: &mut World) {
     let mut game_commands = GameCommands::new();
 
     let map_size = TilemapSize { x: 30, y: 30 };
+    game_data.map_size_x = map_size.x;
+    game_data.map_size_y = map_size.y;
+
     let tilemap_tile_size = TilemapTileSize { x: 16.0, y: 16.0 };
     let tilemap_type = TilemapType::Square;
 
@@ -180,7 +185,7 @@ pub fn start_game(world: &mut World) {
                 object_type: object_type_pulser.clone(),
             },
             Building {
-                building_type: Pulser { strength: 5 },
+                building_type: Pulser { strength: 2 },
             },
         ),
         player_spawn_pos,
@@ -203,7 +208,7 @@ pub fn start_game(world: &mut World) {
                 object_type: object_type_pulser.clone(),
             },
             Building {
-                building_type: Pulser { strength: 5 },
+                building_type: Pulser { strength: 2 },
             },
         ),
         player_spawn_pos,
@@ -226,7 +231,7 @@ pub fn start_game(world: &mut World) {
                 object_type: object_type_pulser.clone(),
             },
             Building {
-                building_type: Pulser { strength: 5 },
+                building_type: Pulser { strength: 2 },
             },
         ),
         player_spawn_pos,
@@ -264,6 +269,14 @@ impl GameRunner for TestRunner {
     }
 }
 
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
+#[system_set(base)]
+pub enum GameSets{
+    Pre,
+    Core,
+    Post,
+}
+
 pub fn setup_game(
     tile_movement_costs: Vec<(TerrainType, TileMovementCosts)>,
     commands: Option<Vec<Box<dyn GameCommand>>>,
@@ -273,6 +286,9 @@ pub fn setup_game(
 
     let mut schedule = Schedule::new();
     schedule.add_system(simulate_pulsers);
+    schedule.configure_sets((GameSets::Pre, GameSets::Core, GameSets::Post).chain());
+    schedule.add_system(update_color_conflicts.in_base_set(GameSets::Post));
+    schedule.add_system(handle_color_conflicts.in_base_set(GameSets::Post).after(update_color_conflicts));
 
     let mut game = match commands {
         None => GameBuilder::<TestRunner>::new_game(TestRunner { schedule }),
@@ -293,10 +309,13 @@ pub fn setup_game(
     game.add_player(true);
 
     game.game_world.init_resource::<State<GameState>>();
+    game.game_world.init_resource::<ColorConflicts>();
+    game.game_world.init_resource::<Events<ColorConflictEvent>>();
 
     game.register_component::<ObjectInfo>();
     game.register_component::<Building<Pulser>>();
     game.register_component::<TileColor>();
-
+    game.register_resource::<ColorConflicts>();
+    
     game.build(world);
 }

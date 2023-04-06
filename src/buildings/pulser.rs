@@ -1,6 +1,6 @@
 ﻿use crate::buildings::{Building, Pulser};
-use crate::color_system::{TileColor, TileColorStrength};
-use bevy::prelude::{Commands, Entity, Mut, Query, With, Without};
+use crate::color_system::{convert_tile, ColorConflictEvent, TileColor, TileColorStrength};
+use bevy::prelude::{Commands, Entity, EventWriter, Mut, Query, With, Without};
 use bevy::utils::hashbrown::HashMap;
 use bevy::utils::petgraph::visit::Walker;
 use bevy_ecs_tilemap::prelude::{TilePos, TileStorage, TilemapSize};
@@ -8,7 +8,7 @@ use bevy_ggf::game_core::state::Changed;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::mapping::MapId;
-use bevy_ggf::object::ObjectGridPosition;
+use bevy_ggf::object::{ObjectGridPosition, ObjectId};
 use bevy_ggf::player::PlayerMarker;
 
 #[derive(Default, Clone, Copy, Eq, Hash, Debug, PartialEq)]
@@ -25,6 +25,7 @@ pub fn simulate_pulsers(
     pulsers: Query<
         (
             Entity,
+            &ObjectId,
             &PlayerMarker,
             &Building<Pulser>,
             &ObjectGridPosition,
@@ -39,7 +40,7 @@ pub fn simulate_pulsers(
         ),
         (With<Tile>, Without<Building<Pulser>>, Without<MapId>),
     >,
-    mut commands: Commands,
+    mut event_writer: EventWriter<ColorConflictEvent>,
 ) {
     let Some((_, _, tile_storage, tilemap_size)) = tile_storage_query
         .iter_mut()
@@ -47,9 +48,8 @@ pub fn simulate_pulsers(
         return;
         };
 
-    for (entity, player_marker, pulser, object_grid_position) in pulsers.iter() {
+    for (entity, id, player_marker, pulser, object_grid_position) in pulsers.iter() {
         let mut tiles_info: HashMap<TilePos, TileNode> = HashMap::new();
-        let mut tiles_to_change: Vec<(TilePos, Entity)> = vec![];
 
         // insert the starting node at the moving objects grid position
         tiles_info.insert(
@@ -61,6 +61,12 @@ pub fn simulate_pulsers(
             },
         );
 
+        event_writer.send(ColorConflictEvent {
+            from_object: *id,
+            tile_pos: object_grid_position.tile_position,
+            player: player_marker.id(),
+        });
+
         // unvisited nodes
         let mut unvisited_tiles: Vec<TileNode> = vec![TileNode {
             tile_pos: object_grid_position.tile_position,
@@ -68,12 +74,6 @@ pub fn simulate_pulsers(
             cost: Some(0),
         }];
         let mut visited_nodes: Vec<TilePos> = vec![];
-        tiles_to_change.push((
-            object_grid_position.tile_position,
-            tile_storage
-                .get(&object_grid_position.tile_position)
-                .unwrap(),
-        ));
 
         while !unvisited_tiles.is_empty() {
             unvisited_tiles.sort_by(|x, y| x.cost.unwrap().partial_cmp(&y.cost.unwrap()).unwrap());
@@ -120,65 +120,24 @@ pub fn simulate_pulsers(
                 let Some(tile_entity) = tile_storage.get(&neighbor.0) else {
                     continue;
                 };
-
-                // add something to check if they are not the right player and then change the color
                 if let Ok((entity, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
-                    if tile_terrain_info.terrain_type.terrain_class.name.as_str() != "Colorable" {
-                        continue;
-                    }
-
-                    match options {
-                        None => {
-                            commands.entity(entity).insert((
-                                TileColor {
-                                    tile_color_strength: TileColorStrength::One,
-                                },
-                                PlayerMarker::new(player_marker.id()),
-                                Changed::default(),
-                            ));
-                        }
-                        Some((mut tile_player_marker, mut tile_color)) => {
-                            if player_marker == &*tile_player_marker {
-                                unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
-                                    "Is safe because we know we add the node in at the beginning of this loop",
-                                ));
-                                tile_color.strengthen();
-                            } else {
-                                tile_color.damage();
-                            }
-                            commands.entity(entity).insert(Changed::default());
-                        }
+                    if convert_tile(
+                        id,
+                        &player_marker.id(),
+                        neighbor.0,
+                        tile_terrain_info,
+                        options,
+                        &mut event_writer,
+                    ) {
+                        unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
+                            "Is safe because we know we add the node in at the beginning of this loop",
+                        ));
                     }
                 }
-                tiles_to_change.push((neighbor.0, neighbor.1));
             }
 
             unvisited_tiles.remove(0);
             visited_nodes.push(current_node.tile_pos);
-        }
-
-        for (tile_pos, entity) in tiles_to_change {
-            if let Ok((entity, _, options)) = tiles.get_mut(entity) {
-                match options {
-                    None => {
-                        commands.entity(entity).insert((
-                            TileColor {
-                                tile_color_strength: TileColorStrength::One,
-                            },
-                            PlayerMarker::new(player_marker.id()),
-                            Changed::default(),
-                        ));
-                    }
-                    Some((mut tile_player_marker, mut tile_color)) => {
-                        if player_marker == &*tile_player_marker {
-                            tile_color.strengthen();
-                        } else {
-                            tile_color.damage();
-                        }
-                        commands.entity(entity).insert(Changed::default());
-                    }
-                }
-            }
         }
     }
 }
