@@ -5,23 +5,25 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
-use bevy_game::GamePlugin;
+use clrs::GamePlugin;
 use std::io::Cursor;
+use bevy_ascii_terminal::TerminalPlugin;
 use winit::window::Icon;
 
 fn main() {
     App::new()
         .insert_resource(Msaa::Off)
-        .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)))
+        .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Bevy game".to_string(), // ToDo
+                title: "clrs".to_string(),
                 resolution: (800., 600.).into(),
                 canvas: Some("#bevy".to_owned()),
                 ..default()
             }),
             ..default()
         }))
+        .add_plugin(TerminalPlugin)
         .add_plugin(GamePlugin)
         .add_system(set_window_icon.on_startup())
         .run();

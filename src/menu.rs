@@ -1,6 +1,11 @@
 use crate::loading::FontAssets;
 use crate::GameState;
 use bevy::prelude::*;
+use bevy_ascii_terminal::{AutoCamera, Border, StringFormatter, Terminal, TerminalBundle, ToWorld};
+use leafwing_input_manager::prelude::{ActionState, InputMap, SingleAxis};
+use leafwing_input_manager::user_input::InputKind::Mouse;
+use leafwing_input_manager::InputManagerBundle;
+use ns_defaults::camera::CameraMovementAction;
 
 pub struct MenuPlugin;
 
@@ -35,7 +40,13 @@ fn setup_menu(
     font_assets: Res<FontAssets>,
     button_colors: Res<ButtonColors>,
 ) {
-    commands.spawn(Camera2dBundle::default());
+    let mut term = Terminal::new([30, 30]).with_border(Border::single_line());
+    term.put_string([1, 1], "Hello world!".fg(Color::BLUE));
+
+    commands
+        .spawn((TerminalBundle::from(term), AutoCamera))
+        .insert(ToWorld::default());
+
     commands
         .spawn(ButtonBundle {
             style: Style {
