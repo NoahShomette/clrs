@@ -2,7 +2,9 @@ use crate::abilities::Abilities;
 use crate::actions::game_control::{place_building};
 use bevy::prelude::*;
 use bevy_ascii_terminal::TileFormatter;
+use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::player::{Player, PlayerMarker};
+use ns_defaults::camera::CursorWorldPos;
 
 use crate::buildings::BuildingTypes;
 use crate::GameState;
@@ -31,6 +33,8 @@ pub struct Actions {
     pub placed_ability: bool,
     pub selected_building: BuildingTypes,
     pub selected_ability: Abilities,
+    pub target_world_pos: bool,
+    pub tile_pos: Option<TilePos>,
 }
 
 pub fn update_actions(
@@ -42,9 +46,11 @@ pub fn update_actions(
         if player.id() == 0 {
             if mouse.just_pressed(MouseButton::Left) {
                 actions.placed_building = true;
+                actions.target_world_pos = true;
             }
             if mouse.just_pressed(MouseButton::Right) {
                 actions.placed_ability = true;
+                actions.target_world_pos = true;
             }
 
             if keyboard_input.just_pressed(KeyCode::W) || keyboard_input.pressed(KeyCode::Up) {

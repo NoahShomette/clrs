@@ -1,8 +1,8 @@
 ﻿mod draw;
 mod state;
 
-use bevy::app::App;
 use crate::actions::Actions;
+use crate::ai::run_ai;
 use crate::buildings::line::simulate_lines;
 use crate::buildings::pulser::{simulate_pulsers, Pulser};
 use crate::buildings::scatter::simulate_scatterers;
@@ -17,6 +17,7 @@ use crate::game::state::update_game_state;
 use crate::map::MapCommandsExt;
 use crate::player::{update_player_points, PlayerPoints};
 use crate::GameState;
+use bevy::app::App;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_ascii_terminal::Terminal;
@@ -197,7 +198,7 @@ pub fn start_game(world: &mut World) {
 
     let mut game_commands = GameCommands::new();
 
-    let map_size = TilemapSize { x: 100, y: 100 };
+    let map_size = TilemapSize { x: 40, y: 40 };
     game_data.map_size_x = map_size.x;
     game_data.map_size_y = map_size.y;
 
@@ -212,7 +213,7 @@ pub fn start_game(world: &mut World) {
         tile_stack_rules,
     );
 
-    let player_spawn_pos = TilePos { x: 3, y: 3 };
+    let player_spawn_pos = TilePos { x: 10, y: 10 };
 
     let spawn_object = game_commands.spawn_object(
         (
@@ -228,13 +229,13 @@ pub fn start_game(world: &mut World) {
             },
             Building {
                 building_type: Pulser {
-                    strength: 5,
+                    strength: 7,
                     max_pulse_tiles: 10,
                 },
             },
             BuildingCooldown {
-                timer: Timer::from_seconds(0.1, TimerMode::Once),
-                timer_reset: 0.1,
+                timer: Timer::from_seconds(0.3, TimerMode::Once),
+                timer_reset: 0.3,
             },
             BuildingMarker::default(),
         ),
@@ -243,38 +244,7 @@ pub fn start_game(world: &mut World) {
         0,
     );
 
-    let player_spawn_pos = TilePos { x: 15, y: 15 };
-
-    let spawn_object_3 = game_commands.spawn_object(
-        (
-            ObjectGridPosition {
-                tile_position: player_spawn_pos,
-            },
-            ObjectStackingClass {
-                stack_class: stacking_class_building.clone(),
-            },
-            Object,
-            ObjectInfo {
-                object_type: object_type_pulser.clone(),
-            },
-            Building {
-                building_type: Pulser {
-                    strength: 5,
-                    max_pulse_tiles: 10,
-                },
-            },
-            BuildingCooldown {
-                timer: Timer::from_seconds(0.1, TimerMode::Once),
-                timer_reset: 0.1,
-            },
-            BuildingMarker::default(),
-        ),
-        player_spawn_pos,
-        MapId { id: 1 },
-        0,
-    );
-
-    let player_spawn_pos = TilePos { x: 7, y: 7 };
+    let player_spawn_pos = TilePos { x: 30, y: 30 };
 
     let spawn_object_2 = game_commands.spawn_object(
         (
@@ -290,19 +260,81 @@ pub fn start_game(world: &mut World) {
             },
             Building {
                 building_type: Pulser {
-                    strength: 5,
+                    strength: 7,
                     max_pulse_tiles: 10,
                 },
             },
             BuildingCooldown {
-                timer: Timer::from_seconds(0.1, TimerMode::Once),
-                timer_reset: 0.1,
+                timer: Timer::from_seconds(0.3, TimerMode::Once),
+                timer_reset: 0.3,
             },
             BuildingMarker::default(),
         ),
         player_spawn_pos,
         MapId { id: 1 },
         1,
+    );
+
+    let player_spawn_pos = TilePos { x: 10, y: 30 };
+
+    let spawn_object_3 = game_commands.spawn_object(
+        (
+            ObjectGridPosition {
+                tile_position: player_spawn_pos,
+            },
+            ObjectStackingClass {
+                stack_class: stacking_class_building.clone(),
+            },
+            Object,
+            ObjectInfo {
+                object_type: object_type_pulser.clone(),
+            },
+            Building {
+                building_type: Pulser {
+                    strength: 7,
+                    max_pulse_tiles: 10,
+                },
+            },
+            BuildingCooldown {
+                timer: Timer::from_seconds(0.3, TimerMode::Once),
+                timer_reset: 0.3,
+            },
+            BuildingMarker::default(),
+        ),
+        player_spawn_pos,
+        MapId { id: 1 },
+        2,
+    );
+
+    let player_spawn_pos = TilePos { x: 30, y: 10 };
+
+    let spawn_object_4 = game_commands.spawn_object(
+        (
+            ObjectGridPosition {
+                tile_position: player_spawn_pos,
+            },
+            ObjectStackingClass {
+                stack_class: stacking_class_building.clone(),
+            },
+            Object,
+            ObjectInfo {
+                object_type: object_type_pulser.clone(),
+            },
+            Building {
+                building_type: Pulser {
+                    strength: 7,
+                    max_pulse_tiles: 10,
+                },
+            },
+            BuildingCooldown {
+                timer: Timer::from_seconds(0.3, TimerMode::Once),
+                timer_reset: 0.3,
+            },
+            BuildingMarker::default(),
+        ),
+        player_spawn_pos,
+        MapId { id: 1 },
+        3,
     );
 
     setup_game(
@@ -312,11 +344,12 @@ pub fn start_game(world: &mut World) {
             Box::new(spawn_object) as Box<dyn GameCommand>,
             Box::new(spawn_object_2) as Box<dyn GameCommand>,
             Box::new(spawn_object_3) as Box<dyn GameCommand>,
+            Box::new(spawn_object_4) as Box<dyn GameCommand>,
+
         ]),
         world,
+        game_data,
     );
-
-    world.insert_resource(game_data);
 
     let mut term: Mut<Terminal> = world.query::<&mut Terminal>().single_mut(world);
     term.resize([
@@ -347,6 +380,7 @@ pub fn setup_game(
     tile_movement_costs: Vec<(TerrainType, TileMovementCosts)>,
     commands: Option<Vec<Box<dyn GameCommand>>>,
     world: &mut World,
+    game_data: GameData,
 ) {
     let mut schedule = Schedule::new();
     schedule.configure_sets((GameSets::Pre, GameSets::Core, GameSets::Post).chain());
@@ -359,6 +393,7 @@ pub fn setup_game(
             simulate_lines,
             simulate_scatterers,
             update_color_conflicts,
+            run_ai,
             handle_color_conflicts,
             destroy_buildings,
             apply_system_buffers,
@@ -398,14 +433,33 @@ pub fn setup_game(
 
     let (player_id, entity_mut) = game.add_player(false);
     let entity = entity_mut.id();
-    game.game_world.entity_mut(entity).insert(PlayerPoints {
-        building_points: 50,
-        ability_points: 0,
-    });
-    world
-        .spawn_empty()
-        .insert(Actions::default())
-        .insert(PlayerMarker::new(player_id));
+    game.game_world
+        .entity_mut(entity)
+        .insert(PlayerPoints {
+            building_points: 50,
+            ability_points: 0,
+        })
+        .insert(Actions::default());
+
+    let (player_id, entity_mut) = game.add_player(false);
+    let entity = entity_mut.id();
+    game.game_world
+        .entity_mut(entity)
+        .insert(PlayerPoints {
+            building_points: 50,
+            ability_points: 0,
+        })
+        .insert(Actions::default());
+
+    let (player_id, entity_mut) = game.add_player(false);
+    let entity = entity_mut.id();
+    game.game_world
+        .entity_mut(entity)
+        .insert(PlayerPoints {
+            building_points: 50,
+            ability_points: 0,
+        })
+        .insert(Actions::default());
 
     game.game_world.init_resource::<State<GameState>>();
     game.game_world.init_resource::<ColorConflicts>();
@@ -425,6 +479,9 @@ pub fn setup_game(
     game.register_component::<PlayerPoints>();
     game.register_component::<Player>();
     game.register_component::<Actions>();
+
+    world.insert_resource(game_data.clone());
+    game.game_world.insert_resource(game_data);
 
     game.build(world);
 }

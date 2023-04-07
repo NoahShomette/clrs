@@ -2,10 +2,6 @@
 pub mod pulser;
 pub mod scatter;
 
-use crate::buildings::line::Line;
-use crate::buildings::pulser::Pulser;
-use crate::buildings::scatter::Scatters;
-use crate::game::GameData;
 use bevy::prelude::{
     Bundle, Commands, Component, Entity, FromReflect, Query, Reflect, Res, ResMut, Timer, With,
     Without,

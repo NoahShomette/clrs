@@ -52,6 +52,15 @@ pub fn draw_game(
                 [1, 1],
                 String::from(format!("BP: {}", player_points.building_points)).fg(Color::WHITE),
             );
+        } else {
+            term.put_string(
+                [20, 3],
+                String::from(format!("AI - AP: {}", player_points.ability_points)).fg(Color::RED),
+            );
+            term.put_string(
+                [20, 1],
+                String::from(format!("AI - BP: {}", player_points.building_points)).fg(Color::RED),
+            );
         }
     }
 
