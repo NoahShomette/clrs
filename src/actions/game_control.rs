@@ -127,12 +127,12 @@ pub fn place_building(
                                 Building {
                                     building_type: Pulser {
                                         strength: 7,
-                                        max_pulse_tiles: 10,
+                                        max_pulse_tiles: 3,
                                     },
                                 },
                                 BuildingCooldown {
-                                    timer: Timer::from_seconds(0.3, TimerMode::Once),
-                                    timer_reset: 0.3,
+                                    timer: Timer::from_seconds(0.1, TimerMode::Once),
+                                    timer_reset: 0.1,
                                 },
                                 BuildingMarker::default(),
                             ),
@@ -171,7 +171,7 @@ pub fn place_building(
                                 },
                                 Building {
                                     building_type: Scatters {
-                                        scatter_range: 4,
+                                        scatter_range: 3,
                                         scatter_amount: 30,
                                     },
                                 },

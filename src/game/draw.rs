@@ -5,6 +5,7 @@ use crate::color_system::{PlayerColors, TileColor, TileColorStrength};
 use crate::game::{GameData, BORDER_PADDING_TOTAL};
 use crate::player::PlayerPoints;
 use bevy::prelude::{Color, Query, Res, Without};
+use bevy::utils::HashMap;
 use bevy_ascii_terminal::{ColorFormatter, StringFormatter, Terminal, TileFormatter};
 use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::game_core::Game;
@@ -12,6 +13,7 @@ use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectInfo, ObjectType};
 use bevy_ggf::player::{Player, PlayerMarker};
+use std::process::id;
 
 pub fn draw_game(
     mut term_query: Query<&mut Terminal>,
@@ -51,15 +53,6 @@ pub fn draw_game(
             term.put_string(
                 [1, 1],
                 String::from(format!("BP: {}", player_points.building_points)).fg(Color::WHITE),
-            );
-        } else {
-            term.put_string(
-                [20, 3],
-                String::from(format!("AI - AP: {}", player_points.ability_points)).fg(Color::RED),
-            );
-            term.put_string(
-                [20, 1],
-                String::from(format!("AI - BP: {}", player_points.building_points)).fg(Color::RED),
             );
         }
     }
@@ -101,6 +94,8 @@ pub fn draw_game(
                     term.put_string([1, 18], "F".fg(Color::GREEN));
                 }
             }
+
+            term.put_string([0, 20], "---------".fg(Color::WHITE));
         }
     }
 
@@ -111,6 +106,16 @@ pub fn draw_game(
     term.put_string([10, 5], "|".fg(Color::WHITE));
     term.put_string([10, 6], "|".fg(Color::WHITE));
     term.put_string([10, 7], "|".fg(Color::WHITE));
+
+    term.put_string([12, 1], "|".fg(Color::WHITE));
+    term.put_string([12, 2], "|".fg(Color::WHITE));
+    term.put_string([12, 3], "|".fg(Color::WHITE));
+    term.put_string([12, 4], "|".fg(Color::WHITE));
+    term.put_string([12, 5], "|".fg(Color::WHITE));
+    term.put_string([12, 6], "|".fg(Color::WHITE));
+    term.put_string([12, 7], "|".fg(Color::WHITE));
+
+    let mut player_tile_count: HashMap<usize, i32> = HashMap::new();
 
     for (tile, tile_terrain_info, tile_pos, option) in tile_queries.iter() {
         match option {
@@ -129,6 +134,10 @@ pub fn draw_game(
                 );
             }
             Some((tile_color_strength, player_marker)) => {
+                let count = player_tile_count.entry(player_marker.id()).or_insert(0);
+                let count = *count;
+                player_tile_count.insert(player_marker.id(), count.saturating_add(1));
+
                 match tile_color_strength.tile_color_strength {
                     TileColorStrength::Neutral => {
                         let color: Color = match tile_terrain_info.terrain_type.name.as_str() {
@@ -198,6 +207,79 @@ pub fn draw_game(
             }
         }
     }
+
+    if let Some(player_tile_count) = player_tile_count.get(&0) {
+        let player_tile_count =
+            *player_tile_count as f32 / (game.map_size_y as f32 * game.map_size_x as f32);
+        if player_tile_count > 0.0 {
+            term.put_color([11, 1], Color::BLUE.bg());
+        }
+        if player_tile_count > 0.2 {
+            term.put_color([11, 2], Color::BLUE.bg());
+        }
+        if player_tile_count > 0.4 {
+            term.put_color([11, 3], Color::BLUE.bg());
+        }
+        if player_tile_count > 0.5 {
+            term.put_color([11, 4], Color::BLUE.bg());
+        }
+        if player_tile_count > 0.6 {
+            term.put_color([11, 5], Color::BLUE.bg());
+        }
+        if player_tile_count > 0.8 {
+            term.put_color([11, 6], Color::BLUE.bg());
+        }
+        if player_tile_count > 1.0 {
+            term.put_color([11, 7], Color::BLUE.bg());
+        }
+    }
+
+    term.put_string(
+        [14, 3],
+        String::from(format!("{}", player_tile_count.get(&0).unwrap_or(&0))).fg(Color::BLUE),
+    );
+    term.put_string([14, 2], "-------".fg(Color::WHITE));
+    term.put_string(
+        [14, 1],
+        String::from(format!("{}", game.map_size_x * game.map_size_y)).fg(Color::WHITE),
+    );
+
+    for (id, count) in player_tile_count.iter() {
+        if id == &0 {
+            continue;
+        }
+        let player_color = PlayerColors::get_color(*id);
+        let diff = match id {
+            3 => 26,
+            2 => 24,
+            1 => 22,
+            0 => 28,
+            _ => 0,
+        };
+        let player_tile_count = *count as f32 / (game.map_size_y as f32 * game.map_size_x as f32);
+        if player_tile_count > 0.0 {
+            term.put_color([0, diff], player_color.bg());
+        }
+        if player_tile_count > 0.2 {
+            term.put_color([1, diff], player_color.bg());
+        }
+        if player_tile_count > 0.4 {
+            term.put_color([2, diff], player_color.bg());
+        }
+        if player_tile_count > 0.5 {
+            term.put_color([3, diff], player_color.bg());
+        }
+        if player_tile_count > 0.6 {
+            term.put_color([4, diff], player_color.bg());
+        }
+        if player_tile_count > 0.8 {
+            term.put_color([5, diff], player_color.bg());
+        }
+        if player_tile_count > 1.0 {
+            term.put_color([6, diff], player_color.bg());
+        }
+    }
+
     for (object, object_pos, object_info, player_marker) in object_queries.iter() {
         match object_info.object_type.name.as_str() {
             "Pulser" => {
