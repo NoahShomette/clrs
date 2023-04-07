@@ -2,13 +2,20 @@
 mod state;
 
 use bevy::app::App;
-
-use crate::buildings::pulser::simulate_pulsers;
-use crate::buildings::{Building, Pulser};
-use crate::color_system::{ColorConflictEvent, ColorConflicts, handle_color_conflicts, TileColor, update_color_conflicts};
+use crate::actions::Actions;
+use crate::buildings::line::simulate_lines;
+use crate::buildings::pulser::{simulate_pulsers, Pulser};
+use crate::buildings::scatter::simulate_scatterers;
+use crate::buildings::{
+    destroy_buildings, update_building_timers, Activate, Building, BuildingCooldown, BuildingMarker,
+};
+use crate::color_system::{
+    handle_color_conflicts, update_color_conflicts, ColorConflictEvent, ColorConflicts, TileColor,
+};
 use crate::game::draw::draw_game;
 use crate::game::state::update_game_state;
 use crate::map::MapCommandsExt;
+use crate::player::{update_player_points, PlayerPoints};
 use crate::GameState;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -22,11 +29,11 @@ use bevy_ggf::mapping::tiles::{
     ObjectStackingClass, StackingClass, TileObjectStacks, TileObjectStacksCount,
 };
 use bevy_ggf::mapping::{GameBuilderMappingExt, MapId};
-use bevy_ggf::movement::defaults::SquareMovementCalculator;
 use bevy_ggf::movement::{GameBuilderMovementExt, TileMovementCosts};
 use bevy_ggf::object::{
     Object, ObjectClass, ObjectGridPosition, ObjectGroup, ObjectInfo, ObjectType,
 };
+use bevy_ggf::player::{Player, PlayerMarker};
 
 pub struct GameCorePlugin;
 impl Plugin for GameCorePlugin {
@@ -39,7 +46,7 @@ impl Plugin for GameCorePlugin {
                 .in_schedule(CoreSchedule::FixedUpdate)
                 .run_if(in_state(GameState::Playing)),
         );
-        app.insert_resource(FixedTime::new_from_secs(0.1));
+        app.insert_resource(FixedTime::new_from_secs(0.01));
     }
 }
 
@@ -48,6 +55,10 @@ pub const BORDER_PADDING_TOTAL: u32 = 20;
 fn simulate_game(world: &mut World) {
     world.resource_scope(|mut world, mut game: Mut<Game>| {
         world.resource_scope(|world, mut game_runtime: Mut<GameRuntime<TestRunner>>| {
+            game.game_world
+                .resource_scope(|world, mut time: Mut<Time>| {
+                    time.update();
+                });
             game_runtime.game_runner.simulate_game(&mut game.game_world);
             world.resource_scope(|world, mut game_commands: Mut<GameCommands>| {
                 game_commands.execute_buffer(&mut game.game_world);
@@ -70,14 +81,22 @@ pub struct GameData {
 
 pub fn start_game(world: &mut World) {
     let mut game_data = GameData::default();
-    
+
     let stacking_class_building: StackingClass = StackingClass {
         name: String::from("Building"),
+    };
+
+    let stacking_class_abilities: StackingClass = StackingClass {
+        name: String::from("Ability"),
     };
 
     game_data.stacking_classes.insert(
         stacking_class_building.name.clone(),
         stacking_class_building.clone(),
+    );
+    game_data.stacking_classes.insert(
+        stacking_class_abilities.name.clone(),
+        stacking_class_abilities.clone(),
     );
 
     let terrain_classes: Vec<TerrainClass> = vec![
@@ -123,6 +142,14 @@ pub fn start_game(world: &mut World) {
         name: String::from("Pulser"),
         object_group: object_group_colorers.clone(),
     };
+    let object_type_line: ObjectType = ObjectType {
+        name: String::from("Line"),
+        object_group: object_group_colorers.clone(),
+    };
+    let object_type_scatter: ObjectType = ObjectType {
+        name: String::from("Scatter"),
+        object_group: object_group_colorers.clone(),
+    };
     game_data.object_classes.insert(
         object_class_building.name.clone(),
         object_class_building.clone(),
@@ -134,14 +161,29 @@ pub fn start_game(world: &mut World) {
     game_data
         .object_types
         .insert(object_type_pulser.name.clone(), object_type_pulser.clone());
-
-    let tile_stack_rules = TileObjectStacks::new(vec![(
-        stacking_class_building.clone(),
-        TileObjectStacksCount {
-            current_count: 0,
-            max_count: 1,
-        },
-    )]);
+    game_data
+        .object_types
+        .insert(object_type_line.name.clone(), object_type_line.clone());
+    game_data.object_types.insert(
+        object_type_scatter.name.clone(),
+        object_type_scatter.clone(),
+    );
+    let tile_stack_rules = TileObjectStacks::new(vec![
+        (
+            stacking_class_building.clone(),
+            TileObjectStacksCount {
+                current_count: 0,
+                max_count: 1,
+            },
+        ),
+        (
+            stacking_class_abilities.clone(),
+            TileObjectStacksCount {
+                current_count: 0,
+                max_count: 1,
+            },
+        ),
+    ]);
 
     let tile_movement_costs = vec![(
         TerrainType {
@@ -155,7 +197,7 @@ pub fn start_game(world: &mut World) {
 
     let mut game_commands = GameCommands::new();
 
-    let map_size = TilemapSize { x: 30, y: 30 };
+    let map_size = TilemapSize { x: 100, y: 100 };
     game_data.map_size_x = map_size.x;
     game_data.map_size_y = map_size.y;
 
@@ -185,8 +227,16 @@ pub fn start_game(world: &mut World) {
                 object_type: object_type_pulser.clone(),
             },
             Building {
-                building_type: Pulser { strength: 2 },
+                building_type: Pulser {
+                    strength: 5,
+                    max_pulse_tiles: 10,
+                },
             },
+            BuildingCooldown {
+                timer: Timer::from_seconds(0.1, TimerMode::Once),
+                timer_reset: 0.1,
+            },
+            BuildingMarker::default(),
         ),
         player_spawn_pos,
         MapId { id: 1 },
@@ -208,15 +258,23 @@ pub fn start_game(world: &mut World) {
                 object_type: object_type_pulser.clone(),
             },
             Building {
-                building_type: Pulser { strength: 2 },
+                building_type: Pulser {
+                    strength: 5,
+                    max_pulse_tiles: 10,
+                },
             },
+            BuildingCooldown {
+                timer: Timer::from_seconds(0.1, TimerMode::Once),
+                timer_reset: 0.1,
+            },
+            BuildingMarker::default(),
         ),
         player_spawn_pos,
         MapId { id: 1 },
         0,
     );
 
-    let player_spawn_pos = TilePos { x: 5, y: 5 };
+    let player_spawn_pos = TilePos { x: 7, y: 7 };
 
     let spawn_object_2 = game_commands.spawn_object(
         (
@@ -231,8 +289,16 @@ pub fn start_game(world: &mut World) {
                 object_type: object_type_pulser.clone(),
             },
             Building {
-                building_type: Pulser { strength: 2 },
+                building_type: Pulser {
+                    strength: 5,
+                    max_pulse_tiles: 10,
+                },
             },
+            BuildingCooldown {
+                timer: Timer::from_seconds(0.1, TimerMode::Once),
+                timer_reset: 0.1,
+            },
+            BuildingMarker::default(),
         ),
         player_spawn_pos,
         MapId { id: 1 },
@@ -271,7 +337,7 @@ impl GameRunner for TestRunner {
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
 #[system_set(base)]
-pub enum GameSets{
+pub enum GameSets {
     Pre,
     Core,
     Post,
@@ -282,14 +348,33 @@ pub fn setup_game(
     commands: Option<Vec<Box<dyn GameCommand>>>,
     world: &mut World,
 ) {
-    let tilemap_type = TilemapType::Square;
-
     let mut schedule = Schedule::new();
-    schedule.add_system(simulate_pulsers);
     schedule.configure_sets((GameSets::Pre, GameSets::Core, GameSets::Post).chain());
-    schedule.add_system(update_color_conflicts.in_base_set(GameSets::Post));
-    schedule.add_system(handle_color_conflicts.in_base_set(GameSets::Post).after(update_color_conflicts));
-
+    schedule.add_systems(
+        (
+            apply_system_buffers,
+            update_building_timers,
+            apply_system_buffers,
+            simulate_pulsers,
+            simulate_lines,
+            simulate_scatterers,
+            update_color_conflicts,
+            handle_color_conflicts,
+            destroy_buildings,
+            apply_system_buffers,
+        )
+            .chain()
+            .in_base_set(GameSets::Core),
+    );
+    schedule.add_systems(
+        (
+            apply_system_buffers,
+            update_player_points,
+            apply_system_buffers,
+        )
+            .chain()
+            .in_base_set(GameSets::Post),
+    );
     let mut game = match commands {
         None => GameBuilder::<TestRunner>::new_game(TestRunner { schedule }),
         Some(commands) => {
@@ -298,24 +383,48 @@ pub fn setup_game(
     };
 
     game.setup_movement(tile_movement_costs);
-    game.with_movement_calculator(
-        SquareMovementCalculator {
-            diagonal_movement: Default::default(),
-        },
-        vec![],
-        tilemap_type,
-    );
     game.setup_mapping();
-    game.add_player(true);
+
+    let (player_id, entity_mut) = game.add_player(true);
+    let entity = entity_mut.id();
+    game.game_world.entity_mut(entity).insert(PlayerPoints {
+        building_points: 50,
+        ability_points: 0,
+    });
+    world
+        .spawn_empty()
+        .insert(Actions::default())
+        .insert(PlayerMarker::new(player_id));
+
+    let (player_id, entity_mut) = game.add_player(false);
+    let entity = entity_mut.id();
+    game.game_world.entity_mut(entity).insert(PlayerPoints {
+        building_points: 50,
+        ability_points: 0,
+    });
+    world
+        .spawn_empty()
+        .insert(Actions::default())
+        .insert(PlayerMarker::new(player_id));
 
     game.game_world.init_resource::<State<GameState>>();
     game.game_world.init_resource::<ColorConflicts>();
-    game.game_world.init_resource::<Events<ColorConflictEvent>>();
+    game.game_world
+        .init_resource::<Events<ColorConflictEvent>>();
+    game.game_world.init_resource::<Time>();
 
     game.register_component::<ObjectInfo>();
+
     game.register_component::<Building<Pulser>>();
+    game.register_component::<Activate>();
+    game.register_component::<BuildingCooldown>();
+
     game.register_component::<TileColor>();
     game.register_resource::<ColorConflicts>();
-    
+
+    game.register_component::<PlayerPoints>();
+    game.register_component::<Player>();
+    game.register_component::<Actions>();
+
     game.build(world);
 }

@@ -7,6 +7,7 @@ mod game;
 mod color_system;
 mod map;
 mod buildings;
+mod abilities;
 
 use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;

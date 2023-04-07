@@ -1,4 +1,5 @@
-﻿use crate::buildings::{Building, Pulser};
+﻿use crate::buildings::Building;
+use crate::player::PlayerPoints;
 use bevy::app::{App, Plugin};
 use bevy::prelude::{
     Color, Commands, Component, Entity, EventReader, EventWriter, FromReflect, Mut, Query, ResMut,
@@ -13,7 +14,7 @@ use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::ObjectId;
-use bevy_ggf::player::PlayerMarker;
+use bevy_ggf::player::{Player, PlayerMarker};
 
 pub struct ColorSystemPlugin;
 
@@ -76,7 +77,7 @@ pub fn update_color_conflicts(
 }
 
 pub fn handle_color_conflicts(
-    color_conflicts: ResMut<ColorConflicts>,
+    mut color_conflicts: ResMut<ColorConflicts>,
     mut commands: Commands,
     mut tiles: Query<
         (
@@ -87,6 +88,7 @@ pub fn handle_color_conflicts(
         With<Tile>,
     >,
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
+    mut player_query: Query<(Entity, &mut PlayerPoints, &Player)>,
 ) {
     for (tile_pos, player_id_vec) in color_conflicts.conflicts.iter() {
         let mut id_hashmap: HashMap<usize, u32> = HashMap::default();
@@ -100,50 +102,79 @@ pub fn handle_color_conflicts(
             let count = *count;
             id_hashmap.insert(id.0, count.saturating_add(1));
         }
-        let mut highest: (usize, u32) = (0, 0);
-        for (id, count) in id_hashmap {
-            if count > highest.1 {
-                highest.0 = id;
-                highest.1 = count;
+
+        let mut handle_conflicts = true;
+
+        while handle_conflicts {
+            if id_hashmap.is_empty() {
+                handle_conflicts = false;
             }
-        }
 
-        let Some((_, tile_storage)) = tile_storage_query
-            .iter_mut()
-            .find(|(id, _)| id == &&MapId{ id: 1 })else {
-            continue;
-        };
-
-        let tile_entity = tile_storage.get(&tile_pos).unwrap();
-
-        let Ok((entity, tile_pos, options)) = tiles.get_mut(tile_entity) else {
-            continue;
-        };
-
-        match options {
-            None => {
-                commands.entity(entity).insert((
-                    TileColor {
-                        tile_color_strength: TileColorStrength::One,
-                    },
-                    PlayerMarker::new(highest.0),
-                    Changed::default(),
-                ));
+            let mut highest: (usize, u32) = (0, 0);
+            for (id, count) in id_hashmap.iter() {
+                if count > &highest.1 {
+                    highest.0 = *id;
+                    highest.1 = *count;
+                }
             }
-            Some((tile_player_marker, mut tile_color)) => {
-                if highest.0 == tile_player_marker.id() {
-                    tile_color.strengthen();
-                } else {
-                    tile_color.damage();
-                    if let TileColorStrength::Neutral = tile_color.tile_color_strength {
-                        commands.entity(entity).remove::<PlayerMarker>();
-                        commands.entity(entity).remove::<TileColor>();
+
+            let Some((_, tile_storage)) = tile_storage_query
+                .iter_mut()
+                .find(|(id, _)| id == &&MapId{ id: 1 })else {
+                handle_conflicts = false;
+                continue;
+            };
+
+            let tile_entity = tile_storage.get(&tile_pos).unwrap();
+
+            let Ok((entity, _, options)) = tiles.get_mut(tile_entity) else {
+                handle_conflicts = false;
+                continue;
+            };
+
+            match options {
+                None => {
+                    commands.entity(entity).insert((
+                        TileColor {
+                            tile_color_strength: TileColorStrength::One,
+                        },
+                        PlayerMarker::new(highest.0),
+                        Changed::default(),
+                    ));
+                    for (entity, mut player_points, player_id) in player_query.iter_mut() {
+                        if player_id.id() == highest.0 {
+                            player_points.ability_points =
+                                player_points.ability_points.saturating_add(1);
+                            commands.entity(entity).insert(Changed::default());
+                        }
+                    }
+                    handle_conflicts = false;
+                }
+                Some((tile_player_marker, mut tile_color)) => {
+                    if highest.0 == tile_player_marker.id() {
+                        if let TileColorStrength::Five = tile_color.tile_color_strength {
+                            //id_hashmap.remove(&highest.0);
+                            handle_conflicts = false;
+
+                        } else {
+                            tile_color.strengthen();
+                            commands.entity(entity).insert(Changed::default());
+                            handle_conflicts = false;
+                        }
+                    } else {
+                        tile_color.damage();
+                        commands.entity(entity).insert(Changed::default());
+                        if let TileColorStrength::Neutral = tile_color.tile_color_strength {
+                            commands.entity(entity).remove::<PlayerMarker>();
+                            commands.entity(entity).remove::<TileColor>();
+                        }
+                        handle_conflicts = false;
                     }
                 }
-                commands.entity(entity).insert(Changed::default());
             }
         }
     }
+    color_conflicts.conflicts.clear();
 }
 
 #[derive(Default, Clone, Copy, Eq, Debug, PartialEq, Reflect, FromReflect)]

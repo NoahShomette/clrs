@@ -1,32 +1,31 @@
 ﻿use crate::buildings::{get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode};
-use crate::color_system::{convert_tile, ColorConflictEvent, TileColor, TileColorStrength};
+use crate::color_system::{convert_tile, ColorConflictEvent, TileColor};
 use bevy::prelude::{
-    Commands, Component, Entity, EventWriter, FromReflect, Mut, Query, Reflect, With, Without,
+    Commands, Component, Entity, EventWriter, FromReflect, Query, Reflect, With, Without,
 };
 use bevy::utils::hashbrown::HashMap;
-use bevy::utils::petgraph::visit::Walker;
 use bevy_ecs_tilemap::prelude::{TilePos, TileStorage, TilemapSize};
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{ObjectGridPosition, ObjectId};
 use bevy_ggf::player::PlayerMarker;
+use rand::Rng;
 
 #[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
-pub struct Pulser {
-    pub strength: u32,
-    pub max_pulse_tiles: u32,
+pub struct Scatters {
+    pub scatter_range: u32,
+    pub scatter_amount: u32,
 }
-// two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
-// are not the same player then we damage their color by one. Otherwise at that point we stop.
-pub fn simulate_pulsers(
+
+pub fn simulate_scatterers(
     mut tile_storage_query: Query<(Entity, &MapId, &TileStorage, &TilemapSize)>,
     pulsers: Query<
         (
             Entity,
             &ObjectId,
             &PlayerMarker,
-            &Building<Pulser>,
+            &Building<Scatters>,
             &ObjectGridPosition,
         ),
         (Without<MapId>, With<Activate>),
@@ -37,7 +36,7 @@ pub fn simulate_pulsers(
             &TileTerrainInfo,
             Option<(&mut PlayerMarker, &mut TileColor)>,
         ),
-        (With<Tile>, Without<Building<Pulser>>, Without<MapId>),
+        (With<Tile>, Without<Building<Scatters>>, Without<MapId>),
     >,
     mut event_writer: EventWriter<ColorConflictEvent>,
     mut commands: Commands,
@@ -46,11 +45,11 @@ pub fn simulate_pulsers(
         .iter_mut()
         .find(|(_, id, _, _)| id == &&MapId{ id: 1 })else{
         return;
-        };
+    };
 
-    for (entity, id, player_marker, pulser, object_grid_position) in pulsers.iter() {
+    for (entity, id, player_marker, scatter, object_grid_position) in pulsers.iter() {
         let mut tiles_info: HashMap<TilePos, TileNode> = HashMap::new();
-        let mut tiles_changed: u32 = 0;
+
         // insert the starting node at the moving objects grid position
         tiles_info.insert(
             object_grid_position.tile_position,
@@ -75,7 +74,7 @@ pub fn simulate_pulsers(
         }];
         let mut visited_nodes: Vec<TilePos> = vec![];
 
-        while !unvisited_tiles.is_empty() && tiles_changed < pulser.building_type.max_pulse_tiles {
+        while !unvisited_tiles.is_empty() {
             unvisited_tiles.sort_by(|x, y| x.cost.unwrap().partial_cmp(&y.cost.unwrap()).unwrap());
 
             let Some(current_node) = unvisited_tiles.get(0) else {
@@ -109,7 +108,7 @@ pub fn simulate_pulsers(
                 }
 
                 if !tile_cost_check(
-                    pulser.building_type.strength,
+                    scatter.building_type.scatter_range,
                     &neighbor.0,
                     &current_node.tile_pos,
                     &mut tiles_info,
@@ -117,36 +116,35 @@ pub fn simulate_pulsers(
                     continue 'neighbors;
                 }
 
-                let Some(tile_entity) = tile_storage.get(&neighbor.0) else {
-                        continue;
-                    };
-                if let Ok((entity, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
-                    if let Some((player_marker, tile_color)) = options.as_ref() {
-                        if let TileColorStrength::Five = tile_color.tile_color_strength {
-                        } else {
-                            tiles_changed = tiles_changed + 1;
-                        }
-                    } else {
-                        tiles_changed = tiles_changed + 1;
-                    }
-                    if convert_tile(
-                        id,
-                        &player_marker.id(),
-                        neighbor.0,
-                        tile_terrain_info,
-                        options,
-                        &mut event_writer,
-                    ) {
-                        unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
-                                "Is safe because we know we add the node in at the beginning of this loop",
-                            ));
-                    }
-                }
+                unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
+                    "Is safe because we know we add the node in at the beginning of this loop",
+                ));
             }
 
             unvisited_tiles.remove(0);
             visited_nodes.push(current_node.tile_pos);
         }
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..=scatter.building_type.scatter_amount {
+            let y: usize = rng.gen_range(0..visited_nodes.len());
+
+            let Some(tile_entity) = tile_storage.get(&visited_nodes[y]) else {
+                continue;
+            };
+            if let Ok((entity, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
+                if convert_tile(
+                    id,
+                    &player_marker.id(),
+                    visited_nodes[y],
+                    tile_terrain_info,
+                    options,
+                    &mut event_writer,
+                ) {}
+            }
+        }
+
         commands.entity(entity).remove::<Activate>();
     }
 }

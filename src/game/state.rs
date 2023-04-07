@@ -2,15 +2,16 @@
 use bevy::prelude::{Color, Entity, Mut, Query, ReflectComponent, Without, World};
 use bevy_ascii_terminal::{Terminal, TileFormatter};
 use bevy_ecs_tilemap::prelude::TilePos;
-use bevy_ggf::game_core::state::{ObjectState, TileState};
+use bevy_ggf::game_core::state::{DespawnedObjects, ObjectState, PlayerState, TileState};
 use bevy_ggf::game_core::Game;
 use bevy_ggf::mapping::tiles::Tile;
-use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId};
+use bevy_ggf::object::ObjectId;
+use bevy_ggf::player::Player;
 
 pub fn update_game_state(world: &mut World) {
     world.resource_scope(|mut world, mut game: Mut<Game>| {
         let game_state = game.get_state_diff(0);
-
+        //println!("{:?}", game_state);
         let registration = game.type_registry.read();
 
         let tiles: Vec<TileState> = game_state.tiles.into_iter().collect();
@@ -91,8 +92,59 @@ pub fn update_game_state(world: &mut World) {
             }
         }
 
+        let objects: Vec<PlayerState> = game_state.players.into_iter().collect();
+        for player in objects {
+            let mut system_state: SystemState<Query<(Entity, &Player)>> =
+                SystemState::new(&mut world);
+
+            let mut object_query = system_state.get(&mut world);
+
+            if let Some((entity, _)) = object_query
+                .iter_mut()
+                .find(|(_, id)| id == &&player.player_id)
+            {
+                for component in player.components {
+                    let type_info = component.type_name();
+                    if let Some(type_registration) = registration.get_with_name(type_info) {
+                        if let Some(reflect_component) =
+                            type_registration.data::<ReflectComponent>()
+                        {
+                            reflect_component.remove(&mut world.entity_mut(entity));
+                            reflect_component.insert(&mut world.entity_mut(entity), &*component);
+                        }
+                    }
+                }
+            } else {
+                let entity = world.spawn_empty().id();
+                for component in player.components {
+                    let type_info = component.type_name();
+                    if let Some(type_registration) = registration.get_with_name(type_info) {
+                        if let Some(reflect_component) =
+                            type_registration.data::<ReflectComponent>()
+                        {
+                            reflect_component.remove(&mut world.entity_mut(entity));
+                            reflect_component.insert(&mut world.entity_mut(entity), &*component);
+                        }
+                    }
+                }
+            }
+        }
+
+        let objects: Vec<ObjectId> = game_state.despawned_objects.into_iter().collect();
+        for object in objects {
+            let mut system_state: SystemState<Query<(Entity, &ObjectId)>> =
+                SystemState::new(&mut world);
+
+            let mut object_query = system_state.get(&mut world);
+
+            if let Some((entity, object_id)) =
+                object_query.iter_mut().find(|(_, id)| id == &&object)
+            {
+                world.entity_mut(entity).despawn();
+            }
+        }
+
         drop(registration);
-        let player_list = game.player_list.clone();
-        game.game_state_handler.clear_changed(world, &player_list);
+        game.clear_changed();
     });
 }

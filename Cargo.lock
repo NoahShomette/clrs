@@ -515,7 +515,7 @@ dependencies = [
 [[package]]
 name = "bevy_ggf"
 version = "0.1.1"
-source = "git+https://github.com/NoahShomette/bevy_ggf.git?branch=dev#09b91f3642284ef71a546d252aa1cc591852c40a"
+source = "git+https://github.com/NoahShomette/bevy_ggf.git?branch=dev#644a5082deca20defcd1f4eb7161099cdc9bacf1"
 dependencies = [
  "bevy",
  "bevy_ecs_tilemap",

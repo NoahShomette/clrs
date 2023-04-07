@@ -32,7 +32,7 @@ default = ["bevy/animation", "bevy/bevy_asset", "bevy/bevy_scene", "bevy/bevy_wi
 bevy = { version = "0.10", default-features = false }
 bevy_kira_audio = { version = "0.15" }
 bevy_asset_loader = { version = "0.15" }
-rand = { version = "0.8.3" }
+rand = "0.8.3"
 bevy_ggf = {git = "https://github.com/NoahShomette/bevy_ggf.git", branch = "dev"}
 ns_defaults = {git = "https://github.com/NoahShomette/ns_defaults.git"}
 bevy_ecs_tilemap = "0.10.0"
