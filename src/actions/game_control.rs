@@ -131,8 +131,8 @@ pub fn place_building(
                                     },
                                 },
                                 BuildingCooldown {
-                                    timer: Timer::from_seconds(0.1, TimerMode::Once),
-                                    timer_reset: 0.1,
+                                    timer: Timer::from_seconds(0.2, TimerMode::Once),
+                                    timer_reset: 0.2,
                                 },
                                 BuildingMarker::default(),
                             ),

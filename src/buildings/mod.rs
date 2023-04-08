@@ -26,6 +26,7 @@ pub fn destroy_buildings(
             &BuildingMarker,
         ),
         With<Object>,
+        
     >,
     mut tiles: Query<(Entity, &PlayerMarker), (Without<Object>, With<Tile>)>,
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,

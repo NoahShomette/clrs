@@ -24,18 +24,18 @@ impl Plugin for LoadingPlugin {
 
 #[derive(AssetCollection, Resource)]
 pub struct FontAssets {
-    #[asset(path = "fonts/FiraSans-Bold.ttf")]
-    pub fira_sans: Handle<Font>,
+    //#[asset(path = "fonts/FiraSans-Bold.ttf")]
+    //pub fira_sans: Handle<Font>,
 }
 
 #[derive(AssetCollection, Resource)]
 pub struct AudioAssets {
-    #[asset(path = "audio/flying.ogg")]
-    pub flying: Handle<AudioSource>,
+    //#[asset(path = "audio/flying.ogg")]
+    //pub flying: Handle<AudioSource>,
 }
 
 #[derive(AssetCollection, Resource)]
 pub struct TextureAssets {
-    #[asset(path = "textures/bevy.png")]
-    pub texture_bevy: Handle<Image>,
+    //#[asset(path = "textures/bevy.png")]
+    //pub texture_bevy: Handle<Image>,
 }

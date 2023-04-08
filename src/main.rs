@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
+use bevy::window::{PrimaryWindow, WindowMode};
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
 use clrs::GamePlugin;
@@ -19,6 +19,7 @@ fn main() {
                 title: "clrs".to_string(),
                 resolution: (800., 600.).into(),
                 canvas: Some("#bevy".to_owned()),
+                //mode: WindowMode::Fullscreen,
                 ..default()
             }),
             ..default()

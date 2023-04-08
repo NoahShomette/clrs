@@ -2,7 +2,7 @@
 name = "clrs"
 version = "0.1.0"
 publish = false
-authors = ["Noah Shomette <git@noahshomette.me>"]
+authors = ["Noah Shomette <git@noahshomette.me>", "Kolbe Shomette"]
 edition = "2021"
 exclude = ["dist", "build", "assets", "credits"]
 

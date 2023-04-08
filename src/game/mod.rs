@@ -1,4 +1,5 @@
 ﻿mod draw;
+mod end_game;
 mod state;
 
 use crate::actions::Actions;
@@ -12,7 +13,8 @@ use crate::buildings::{
 use crate::color_system::{
     handle_color_conflicts, update_color_conflicts, ColorConflictEvent, ColorConflicts, TileColor,
 };
-use crate::game::draw::draw_game;
+use crate::game::draw::{draw_game, draw_game_over};
+use crate::game::end_game::{check_game_ended, update_game_end_state};
 use crate::game::state::update_game_state;
 use crate::map::MapCommandsExt;
 use crate::player::{update_player_points, PlayerPoints};
@@ -39,9 +41,19 @@ use bevy_ggf::player::{Player, PlayerMarker};
 pub struct GameCorePlugin;
 impl Plugin for GameCorePlugin {
     fn build(&self, app: &mut App) {
+        app.init_resource::<GameBuildSettings>();
         app.add_system(start_game.in_schedule(OnEnter(GameState::Playing)));
         app.add_system(update_game_state.in_set(OnUpdate(GameState::Playing)));
+
+        app.add_system(check_game_ended.in_set(OnUpdate(GameState::Playing)));
+        app.add_system(check_game_ended.in_set(OnUpdate(GameState::Paused)));
+
         app.add_system(draw_game.in_set(OnUpdate(GameState::Playing)));
+        app.add_system(draw_game.in_set(OnUpdate(GameState::Paused)));
+        app.add_system(draw_game.in_set(OnUpdate(GameState::Ended)));
+
+        app.add_system(draw_game_over.in_set(OnUpdate(GameState::Ended)));
+
         app.add_system(
             simulate_game
                 .in_schedule(CoreSchedule::FixedUpdate)
@@ -68,6 +80,61 @@ fn simulate_game(world: &mut World) {
     });
 }
 
+#[derive(Clone, Eq, Debug, PartialEq, Resource)]
+pub struct GameBuildSettings {
+    pub map_size: u32,
+    pub enemy_count: usize,
+}
+
+impl GameBuildSettings {
+    pub fn decrease_enemy_count(&mut self) {
+        self.enemy_count = self.enemy_count.saturating_sub(1);
+        if self.enemy_count < 1 {
+            self.enemy_count = 1
+        }
+    }
+
+    pub fn increase_enemy_count(&mut self) {
+        self.enemy_count = self.enemy_count.saturating_add(1);
+        if self.enemy_count > 3 {
+            self.enemy_count = 3
+        }
+    }
+
+    pub fn increase_map_size(&mut self, modifier: bool) {
+        let mut amount_to_change = 1;
+        if modifier {
+            amount_to_change = 10
+        }
+        self.map_size = self.map_size.saturating_add(amount_to_change);
+
+        if self.map_size > 100 {
+            self.map_size = 100
+        }
+    }
+
+    pub fn decrease_map_size(&mut self, modifier: bool) {
+        let mut amount_to_change = 1;
+        if modifier {
+            amount_to_change = 10
+        }
+        self.map_size = self.map_size.saturating_sub(amount_to_change);
+
+        if self.map_size < 30 {
+            self.map_size = 30
+        }
+    }
+}
+
+impl Default for GameBuildSettings {
+    fn default() -> Self {
+        Self {
+            map_size: 30,
+            enemy_count: 1,
+        }
+    }
+}
+
 #[derive(Default, Clone, Eq, Debug, PartialEq, Resource, Reflect, FromReflect)]
 pub struct GameData {
     pub map_size_x: u32,
@@ -82,6 +149,9 @@ pub struct GameData {
 
 pub fn start_game(world: &mut World) {
     let mut game_data = GameData::default();
+    let Some(game_build_settings) = world.remove_resource::<GameBuildSettings>() else{
+        return;
+    };
 
     let stacking_class_building: StackingClass = StackingClass {
         name: String::from("Building"),
@@ -198,158 +268,77 @@ pub fn start_game(world: &mut World) {
 
     let mut game_commands = GameCommands::new();
 
-    let map_size = TilemapSize { x: 40, y: 40 };
+    let map_size = TilemapSize {
+        x: game_build_settings.map_size,
+        y: game_build_settings.map_size,
+    };
     game_data.map_size_x = map_size.x;
     game_data.map_size_y = map_size.y;
 
     let tilemap_tile_size = TilemapTileSize { x: 16.0, y: 16.0 };
     let tilemap_type = TilemapType::Square;
+    let mut commands: Vec<Box<dyn GameCommand>> = vec![];
 
-    let spawn_map_command = game_commands.spawn_testing_map(
+    commands.push(Box::new(game_commands.spawn_testing_map(
         map_size,
         tilemap_type,
         tilemap_tile_size,
         terrain_types,
         tile_stack_rules,
-    );
+    )) as Box<dyn GameCommand>);
 
-    let player_spawn_pos = TilePos { x: 10, y: 10 };
+    let inset_count = game_build_settings.map_size / 4;
 
-    let spawn_object = game_commands.spawn_object(
-        (
-            ObjectGridPosition {
-                tile_position: player_spawn_pos,
+    for player_id in 0..=game_build_settings.enemy_count {
+        let player_spawn_pos = match player_id {
+            0 => TilePos {
+                x: inset_count,
+                y: inset_count,
             },
-            ObjectStackingClass {
-                stack_class: stacking_class_building.clone(),
+            1 => TilePos {
+                x: game_build_settings.map_size - inset_count,
+                y: game_build_settings.map_size - inset_count,
             },
-            Object,
-            ObjectInfo {
-                object_type: object_type_pulser.clone(),
+            2 => TilePos {
+                x: game_build_settings.map_size - inset_count,
+                y: inset_count,
             },
-            Building {
-                building_type: Pulser {
-                    strength: 7,
-                    max_pulse_tiles: 10,
+            _ => TilePos {
+                x: inset_count,
+                y: game_build_settings.map_size - inset_count,
+            },
+        };
+        commands.push(Box::new(game_commands.spawn_object(
+            (
+                ObjectGridPosition {
+                    tile_position: player_spawn_pos,
                 },
-            },
-            BuildingCooldown {
-                timer: Timer::from_seconds(0.3, TimerMode::Once),
-                timer_reset: 0.3,
-            },
-            BuildingMarker::default(),
-        ),
-        player_spawn_pos,
-        MapId { id: 1 },
-        0,
-    );
-
-    let player_spawn_pos = TilePos { x: 30, y: 30 };
-
-    let spawn_object_2 = game_commands.spawn_object(
-        (
-            ObjectGridPosition {
-                tile_position: player_spawn_pos,
-            },
-            ObjectStackingClass {
-                stack_class: stacking_class_building.clone(),
-            },
-            Object,
-            ObjectInfo {
-                object_type: object_type_pulser.clone(),
-            },
-            Building {
-                building_type: Pulser {
-                    strength: 7,
-                    max_pulse_tiles: 10,
+                ObjectStackingClass {
+                    stack_class: stacking_class_building.clone(),
                 },
-            },
-            BuildingCooldown {
-                timer: Timer::from_seconds(0.3, TimerMode::Once),
-                timer_reset: 0.3,
-            },
-            BuildingMarker::default(),
-        ),
-        player_spawn_pos,
-        MapId { id: 1 },
-        1,
-    );
-
-    let player_spawn_pos = TilePos { x: 10, y: 30 };
-
-    let spawn_object_3 = game_commands.spawn_object(
-        (
-            ObjectGridPosition {
-                tile_position: player_spawn_pos,
-            },
-            ObjectStackingClass {
-                stack_class: stacking_class_building.clone(),
-            },
-            Object,
-            ObjectInfo {
-                object_type: object_type_pulser.clone(),
-            },
-            Building {
-                building_type: Pulser {
-                    strength: 7,
-                    max_pulse_tiles: 10,
+                Object,
+                ObjectInfo {
+                    object_type: object_type_pulser.clone(),
                 },
-            },
-            BuildingCooldown {
-                timer: Timer::from_seconds(0.3, TimerMode::Once),
-                timer_reset: 0.3,
-            },
-            BuildingMarker::default(),
-        ),
-        player_spawn_pos,
-        MapId { id: 1 },
-        2,
-    );
-
-    let player_spawn_pos = TilePos { x: 30, y: 10 };
-
-    let spawn_object_4 = game_commands.spawn_object(
-        (
-            ObjectGridPosition {
-                tile_position: player_spawn_pos,
-            },
-            ObjectStackingClass {
-                stack_class: stacking_class_building.clone(),
-            },
-            Object,
-            ObjectInfo {
-                object_type: object_type_pulser.clone(),
-            },
-            Building {
-                building_type: Pulser {
-                    strength: 7,
-                    max_pulse_tiles: 10,
+                Building {
+                    building_type: Pulser {
+                        strength: 7,
+                        max_pulse_tiles: 3,
+                    },
                 },
-            },
-            BuildingCooldown {
-                timer: Timer::from_seconds(0.3, TimerMode::Once),
-                timer_reset: 0.3,
-            },
-            BuildingMarker::default(),
-        ),
-        player_spawn_pos,
-        MapId { id: 1 },
-        3,
-    );
+                BuildingCooldown {
+                    timer: Timer::from_seconds(0.0, TimerMode::Once),
+                    timer_reset: 0.2,
+                },
+                BuildingMarker::default(),
+            ),
+            player_spawn_pos,
+            MapId { id: 1 },
+            player_id,
+        )) as Box<dyn GameCommand>);
+    }
 
-    setup_game(
-        tile_movement_costs,
-        Some(vec![
-            Box::new(spawn_map_command) as Box<dyn GameCommand>,
-            Box::new(spawn_object) as Box<dyn GameCommand>,
-            Box::new(spawn_object_2) as Box<dyn GameCommand>,
-            Box::new(spawn_object_3) as Box<dyn GameCommand>,
-            Box::new(spawn_object_4) as Box<dyn GameCommand>,
-
-        ]),
-        world,
-        game_data,
-    );
+    setup_game(tile_movement_costs, Some(commands), world, game_data);
 
     let mut term: Mut<Terminal> = world.query::<&mut Terminal>().single_mut(world);
     term.resize([
@@ -406,6 +395,7 @@ pub fn setup_game(
             apply_system_buffers,
             update_player_points,
             apply_system_buffers,
+            update_game_end_state,
         )
             .chain()
             .in_base_set(GameSets::Post),
@@ -461,7 +451,6 @@ pub fn setup_game(
         })
         .insert(Actions::default());
 
-    game.game_world.init_resource::<State<GameState>>();
     game.game_world.init_resource::<ColorConflicts>();
     game.game_world
         .init_resource::<Events<ColorConflictEvent>>();

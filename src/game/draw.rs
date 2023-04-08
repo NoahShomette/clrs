@@ -2,9 +2,11 @@
 use crate::actions::Actions;
 use crate::buildings::BuildingTypes;
 use crate::color_system::{PlayerColors, TileColor, TileColorStrength};
+use crate::game::end_game::GameEnded;
 use crate::game::{GameData, BORDER_PADDING_TOTAL};
 use crate::player::PlayerPoints;
-use bevy::prelude::{Color, Query, Res, Without};
+use crate::GameState;
+use bevy::prelude::{Color, Query, Res, State, Without};
 use bevy::utils::HashMap;
 use bevy_ascii_terminal::{ColorFormatter, StringFormatter, Terminal, TileFormatter};
 use bevy_ecs_tilemap::prelude::TilePos;
@@ -14,6 +16,57 @@ use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectInfo, ObjectType};
 use bevy_ggf::player::{Player, PlayerMarker};
 use std::process::id;
+
+pub fn draw_game_over(
+    mut term_query: Query<&mut Terminal>,
+    game_ended: Res<GameEnded>,
+    game: Res<GameData>,
+) {
+    let mut term = term_query.single_mut();
+    let term_size = term.size();
+
+    for y in 0..20 {
+        for x in 0..20 {
+            term.clear_string(
+                [
+                    x + (BORDER_PADDING_TOTAL / 2),
+                    y + (BORDER_PADDING_TOTAL / 2),
+                ],
+                1,
+            );
+            term.put_color(
+                [
+                    x + (BORDER_PADDING_TOTAL / 2),
+                    y + (BORDER_PADDING_TOTAL / 2),
+                ],
+                Color::BLACK.bg(),
+            );
+        }
+    }
+
+    term.put_string(
+        [
+            (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2) + 3,
+            (term_size.y / 2) + (BORDER_PADDING_TOTAL / 2) - 3,
+        ],
+        "!!! GAME OVER !!!".fg(Color::GREEN),
+    );
+
+    term.put_string(
+        [
+            (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2) + 1,
+            (term_size.y / 2) + (BORDER_PADDING_TOTAL / 2) - 6,
+        ],
+        "Space to return".fg(Color::WHITE),
+    );
+    term.put_string(
+        [
+            (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2) + 3,
+            (term_size.y / 2) + (BORDER_PADDING_TOTAL / 2) - 7,
+        ],
+        "to menu".fg(Color::WHITE),
+    );
+}
 
 pub fn draw_game(
     mut term_query: Query<&mut Terminal>,
@@ -33,8 +86,10 @@ pub fn draw_game(
     player_queries: Query<(&Player, &PlayerPoints), Without<PlayerMarker>>,
     action_queries: Query<(&PlayerMarker, &Actions), Without<Player>>,
     game: Res<GameData>,
+    current_state: Res<State<GameState>>,
 ) {
     let mut term = term_query.single_mut();
+    let term_size = term.size();
     term.clear();
     term.put_string(
         [
@@ -43,6 +98,17 @@ pub fn draw_game(
         ],
         "CLRS".fg(Color::GREEN),
     );
+
+    if let GameState::Paused = current_state.0 {
+        term.put_string([0, term_size.y - 3], "Esc to play".fg(Color::WHITE));
+        term.put_string(
+            [
+                (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2),
+                game.map_size_y + (BORDER_PADDING_TOTAL / 2) + 6,
+            ],
+            "!!! PAUSED !!!".fg(Color::GREEN),
+        );
+    }
 
     for (player_query, player_points) in player_queries.iter() {
         if player_query.id() == 0 {
@@ -66,13 +132,13 @@ pub fn draw_game(
 
             match actions.selected_building {
                 BuildingTypes::Pulser => {
-                    term.put_string([1, 6], "P".fg(Color::GREEN));
+                    term.put_string([1, 6], "P".fg(Color::BLUE));
                 }
                 BuildingTypes::Scatter => {
-                    term.put_string([3, 6], "S".fg(Color::GREEN));
+                    term.put_string([3, 6], "S".fg(Color::BLUE));
                 }
                 BuildingTypes::Line => {
-                    term.put_string([5, 6], "L".fg(Color::GREEN));
+                    term.put_string([5, 6], "L".fg(Color::BLUE));
                 }
             }
 
@@ -81,17 +147,17 @@ pub fn draw_game(
             term.put_string([0, 12], "Abilities".fg(Color::WHITE));
             term.put_string([1, 14], "N".fg(Color::WHITE));
             term.put_string([1, 16], "S".fg(Color::WHITE));
-            term.put_string([1, 18], "F".fg(Color::WHITE));
+            term.put_string([1, 18], "E".fg(Color::WHITE));
 
             match actions.selected_ability {
                 Abilities::Nuke => {
-                    term.put_string([1, 14], "N".fg(Color::GREEN));
+                    term.put_string([1, 14], "N".fg(Color::BLUE));
                 }
                 Abilities::Sacrifice => {
-                    term.put_string([1, 16], "S".fg(Color::GREEN));
+                    term.put_string([1, 16], "S".fg(Color::BLUE));
                 }
                 Abilities::Boost => {
-                    term.put_string([1, 18], "F".fg(Color::GREEN));
+                    term.put_string([1, 18], "E".fg(Color::BLUE));
                 }
             }
 

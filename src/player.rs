@@ -29,10 +29,10 @@ impl Plugin for PlayerPlugin {
 }
 
 pub fn update_player_points(
-    mut tile_query: Query<(&Tile, &PlayerMarker, &TileColor)>,
+    tile_query: Query<(&Tile, &PlayerMarker, &TileColor)>,
     mut player_query: Query<(Entity, &mut PlayerPoints, &Player)>,
     mut points_timer: Local<Timer>,
-    mut time: Res<Time>,
+    time: Res<Time>,
     mut commands: Commands,
 ) {
     points_timer.tick(time.delta());
