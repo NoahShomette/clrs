@@ -1,4 +1,4 @@
-﻿use crate::buildings::Building;
+use crate::buildings::Building;
 use crate::player::PlayerPoints;
 use bevy::app::{App, Plugin};
 use bevy::prelude::{
@@ -155,7 +155,6 @@ pub fn handle_color_conflicts(
                         if let TileColorStrength::Five = tile_color.tile_color_strength {
                             //id_hashmap.remove(&highest.0);
                             handle_conflicts = false;
-
                         } else {
                             tile_color.strengthen();
                             commands.entity(entity).insert(Changed::default());

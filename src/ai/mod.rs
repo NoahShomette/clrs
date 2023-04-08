@@ -1,4 +1,4 @@
-﻿use crate::actions::Actions;
+use crate::actions::Actions;
 use crate::color_system::ColorConflicts;
 use crate::game::GameData;
 use crate::player::PlayerPoints;
@@ -33,7 +33,7 @@ pub fn run_ai(
         if player_points.building_points < 50 && player_points.ability_points < 50 {
             continue;
         }
-        
+
         let mut sorted_highest_conflicts: Vec<(TilePos, usize)> = vec![];
         for (tile_pos, player_id_vec) in color_conflicts.conflicts.iter().filter(|value| {
             let tile_entity = tile_storage.get(&value.0).unwrap();

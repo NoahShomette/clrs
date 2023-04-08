@@ -1,13 +1,15 @@
-﻿use bevy::ecs::system::SystemState;
+use crate::color_system::TileColorStrength;
+use bevy::ecs::system::SystemState;
 use bevy::prelude::{Commands, Entity, Mut, Query, Reflect, World};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
-use bevy_ggf::mapping::{Map, MapDeSpawned, MapId, MapIdProvider, MapSpawned, SpawnRandomMap};
 use bevy_ggf::mapping::terrain::{TerrainType, TileTerrainInfo};
-use bevy_ggf::mapping::tiles::{BggfTileBundle, BggfTileObjectBundle, Tile, TileObjects, TileObjectStacks};
+use bevy_ggf::mapping::tiles::{
+    BggfTileBundle, BggfTileObjectBundle, Tile, TileObjectStacks, TileObjects,
+};
+use bevy_ggf::mapping::{Map, MapDeSpawned, MapId, MapIdProvider, MapSpawned, SpawnRandomMap};
 use bevy_ggf::movement::TerrainMovementCosts;
 use bevy_ggf::player::PlayerList;
-use crate::color_system::TileColorStrength;
 
 pub trait MapCommandsExt {
     fn spawn_testing_map(
@@ -64,8 +66,6 @@ impl GameCommand for SpawnTestingMap {
         let mut tile_storage = TileStorage::empty(map_size);
         let tilemap_type = self.tilemap_type;
         let tilemap_entity = world.spawn_empty().id();
-        
-        
 
         world.resource_scope(|world, terrain_movement_costs: Mut<TerrainMovementCosts>| {
             for x in 0..map_size.x {

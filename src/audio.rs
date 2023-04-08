@@ -22,7 +22,7 @@ impl Plugin for InternalAudioPlugin {
 #[derive(Resource)]
 struct FlyingAudio(Handle<AudioInstance>);
 
-fn start_audio(mut commands: Commands, audio_assets: Res<AudioAssets>, audio: Res<Audio>) { 
+fn start_audio(mut commands: Commands, audio_assets: Res<AudioAssets>, audio: Res<Audio>) {
     /*
     audio.pause();
     let handle = audio
@@ -31,7 +31,7 @@ fn start_audio(mut commands: Commands, audio_assets: Res<AudioAssets>, audio: Re
         .with_volume(0.3)
         .handle();
     commands.insert_resource(FlyingAudio(handle));
-    
+
      */
 }
 

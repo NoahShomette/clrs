@@ -95,23 +95,22 @@ pub fn ended_controls(
     if keyboard_input.just_pressed(KeyCode::Space) {
         next_state.set(GameState::Menu);
 
-        for entity in tiles.iter(){
+        for entity in tiles.iter() {
             commands.entity(entity).despawn();
         }
-        for entity in objects.iter(){
+        for entity in objects.iter() {
             commands.entity(entity).despawn();
         }
-        for entity in players.iter(){
+        for entity in players.iter() {
             commands.entity(entity).despawn();
         }
-        for entity in player_marker.iter(){
+        for entity in player_marker.iter() {
             commands.entity(entity).despawn();
         }
-        
+
         commands.remove_resource::<Game>();
         commands.init_resource::<GameBuildSettings>();
     }
-    
 }
 
 pub fn update_actions(

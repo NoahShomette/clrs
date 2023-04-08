@@ -1,9 +1,9 @@
-﻿use bevy::prelude::{Commands, Mut, NextState, Query, Res, ResMut, Resource, With};
+use crate::GameState;
+use bevy::prelude::{Commands, Mut, NextState, Query, Res, ResMut, Resource, With};
 use bevy::utils::HashMap;
 use bevy_ggf::game_core::Game;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::player::PlayerMarker;
-use crate::GameState;
 
 #[derive(Default, Resource)]
 pub struct GameEnded {

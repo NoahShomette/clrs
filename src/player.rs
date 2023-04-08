@@ -16,7 +16,6 @@ pub struct PlayerPlugin;
 pub struct PlayerPoints {
     pub building_points: u32,
     pub ability_points: u32,
-
 }
 
 /// This plugin handles player related stuff like movement

@@ -5,9 +5,9 @@ use bevy::prelude::*;
 use bevy::window::{PrimaryWindow, WindowMode};
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
+use bevy_ascii_terminal::TerminalPlugin;
 use clrs::GamePlugin;
 use std::io::Cursor;
-use bevy_ascii_terminal::TerminalPlugin;
 use winit::window::Icon;
 
 fn main() {
