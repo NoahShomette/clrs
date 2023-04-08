@@ -512,6 +512,17 @@ pub struct TileColor {
 }
 
 impl TileColor {
+    pub fn get_number_representation(&self) -> u32 {
+        match self.tile_color_strength {
+            TileColorStrength::Neutral => 0,
+            TileColorStrength::One => 1,
+            TileColorStrength::Two => 2,
+            TileColorStrength::Three => 3,
+            TileColorStrength::Four => 4,
+            TileColorStrength::Five => 5,
+        }
+    }
+
     pub fn max_strength(&self) -> bool {
         return if self.tile_color_strength == TileColorStrength::Five {
             true

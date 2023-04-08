@@ -17,13 +17,10 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "clrs".to_string(),
-                position: WindowPosition::Automatic,
                 fit_canvas_to_parent: true,
                 canvas: Some("#bevy".to_owned()),
                 #[cfg(not(target_arch = "wasm32"))]
                 resolution: (1280., 720.).into(),
-                #[cfg(target_arch = "wasm32")]
-                mode: WindowMode::Fullscreen,
                 ..default()
             }),
             ..default()

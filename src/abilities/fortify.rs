@@ -147,25 +147,27 @@ pub fn simulate_fortifies(
                             ..fortify.ability_type.max_tile_strengthen,
                     );
 
-                    let mut is_player_tile = false;
-                    for _ in 0..rndm {
-                        is_player_tile = register_guaranteed_color_conflict(
-                            &player_marker.id(),
-                            true,
-                            false,
-                            false,
-                            ConflictType::Stengthen,
-                            neighbor.0,
-                            tile_terrain_info,
-                            &options,
-                            &mut event_writer,
-                        );
+                    if options.is_some() {
+                        let (tile_marker, _) = options.as_ref().unwrap();
+                        if tile_marker.id() == player_marker.id() {
+                            for _ in 0..rndm {
+                                register_guaranteed_color_conflict(
+                                    &player_marker.id(),
+                                    true,
+                                    false,
+                                    false,
+                                    ConflictType::Stengthen,
+                                    neighbor.0,
+                                    tile_terrain_info,
+                                    &options,
+                                    &mut event_writer,
+                                );
+                            }
+                        }
                     }
-                    if is_player_tile {
-                        unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
-                            "Is safe because we know we add the node in at the beginning of this loop",
-                        ));
-                    }
+                    unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
+                        "Is safe because we know we add the node in at the beginning of this loop",
+                    ));
                 }
             }
 

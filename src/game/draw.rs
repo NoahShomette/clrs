@@ -1,4 +1,4 @@
-use crate::abilities::Abilities;
+﻿use crate::abilities::Abilities;
 use crate::actions::Actions;
 use crate::buildings::BuildingTypes;
 use crate::color_system::{PlayerColors, TileColor, TileColorStrength};
@@ -14,6 +14,7 @@ use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectInfo, ObjectType};
 use bevy_ggf::player::{Player, PlayerMarker};
+use std::process::id;
 
 pub fn draw_game_over(
     mut term_query: Query<&mut Terminal>,
@@ -25,43 +26,46 @@ pub fn draw_game_over(
 
     for y in 0..20 {
         for x in 0..20 {
-            term.clear_string(
-                [
-                    x + (BORDER_PADDING_TOTAL / 2) + (term_size.x / 4),
-                    y + (BORDER_PADDING_TOTAL / 2) + (term_size.y / 4),
-                ],
-                1,
-            );
+            term.clear_string([x + (term_size.x / 2) - 10, y + (term_size.y / 2) - 10], 1);
             term.put_color(
-                [
-                    x + (BORDER_PADDING_TOTAL / 2) + (term_size.x / 4),
-                    y + (BORDER_PADDING_TOTAL / 2) + (term_size.y / 4),
-                ],
+                [x + (term_size.x / 2) - 10, y + (term_size.y / 2) - 10],
                 Color::BLACK.bg(),
             );
         }
     }
 
     term.put_string(
-        [
-            (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2) + 3,
-            (term_size.y / 2) + (BORDER_PADDING_TOTAL / 2) - 3,
-        ],
+        [(term_size.x / 2) - 10 + 2, (term_size.y / 2) + 10 - 4],
         "!!! GAME OVER !!!".fg(Color::GREEN),
     );
 
+    match game_ended.player_won {
+        true => {
+            term.put_string(
+                [(term_size.x / 2) - 10 + 4, (term_size.y / 2) + 10 - 6],
+                "YOU WON".fg(Color::BLUE),
+            );
+        }
+        false => {
+            let player_color = PlayerColors::get_color(game_ended.winning_id);
+            let ai_color_string = match game_ended.winning_id {
+                1 => "RED",
+                2 => "GREEN",
+                _ => "INDIGO",
+            };
+            term.put_string(
+                [(term_size.x / 2) - 10 + 4, (term_size.y / 2) + 10 - 6],
+                String::from(format!("LOST TO: {}", ai_color_string)).fg(player_color),
+            );
+        }
+    }
+
     term.put_string(
-        [
-            (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2) + 1,
-            (term_size.y / 2) + (BORDER_PADDING_TOTAL / 2) - 6,
-        ],
+        [(term_size.x / 2) - 10 + 2, (term_size.y / 2) + 10 - 10],
         "Space to return".fg(Color::WHITE),
     );
     term.put_string(
-        [
-            (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2) + 3,
-            (term_size.y / 2) + (BORDER_PADDING_TOTAL / 2) - 7,
-        ],
+        [(term_size.x / 2) - 10 + 2, (term_size.y / 2) + 10 - 11],
         "to menu".fg(Color::WHITE),
     );
 }
@@ -96,17 +100,6 @@ pub fn draw_game(
         ],
         "CLRS".fg(Color::GREEN),
     );
-
-    if let GameState::Paused = current_state.0 {
-        term.put_string([0, term_size.y - 3], "Esc to play".fg(Color::WHITE));
-        term.put_string(
-            [
-                (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2),
-                game.map_size_y + (BORDER_PADDING_TOTAL / 2) + 6,
-            ],
-            "!!! PAUSED !!!".fg(Color::GREEN),
-        );
-    }
 
     for (player_query, player_points) in player_queries.iter() {
         if player_query.id() == 0 {

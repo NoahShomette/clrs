@@ -1,4 +1,4 @@
-mod draw;
+pub mod draw;
 mod end_game;
 mod state;
 
@@ -6,7 +6,7 @@ use crate::abilities::expand::simulate_expands;
 use crate::abilities::fortify::simulate_fortifies;
 use crate::abilities::nuke::simulate_nukes;
 use crate::abilities::{destroy_abilities, update_ability_timers};
-use crate::actions::Actions;
+use crate::actions::{Actions, paused_controls};
 use crate::ai::{run_ai_ability, run_ai_building};
 use crate::buildings::line::simulate_lines;
 use crate::buildings::pulser::{simulate_pulsers, Pulser};
@@ -54,7 +54,7 @@ impl Plugin for GameCorePlugin {
         app.add_system(check_game_ended.in_set(OnUpdate(GameState::Paused)));
 
         app.add_system(draw_game.in_set(OnUpdate(GameState::Playing)));
-        app.add_system(draw_game.in_set(OnUpdate(GameState::Paused)));
+        app.add_system(draw_game.before(paused_controls).in_set(OnUpdate(GameState::Paused)));
         app.add_system(draw_game.in_set(OnUpdate(GameState::Ended)));
 
         app.add_system(draw_game_over.in_set(OnUpdate(GameState::Ended)));
@@ -114,7 +114,12 @@ impl GameBuildSettings {
         self.map_size = self.map_size.saturating_add(amount_to_change);
 
         if self.map_size > 100 {
-            self.map_size = 100
+            self.map_size = 100;
+
+            #[cfg(target_arch = "wasm32")]
+            if self.map_size > 60 {
+                self.map_size = 60;
+            }
         }
     }
 

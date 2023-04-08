@@ -26,7 +26,7 @@ fn setup_menu(mut commands: Commands, mut term_query: Query<&mut Terminal>) {
 }
 
 #[derive(Default)]
-pub struct MenuNavigation(u32);
+pub struct MenuNavigation(pub u32);
 
 fn handle_menu(
     mut next_state: ResMut<NextState<GameState>>,

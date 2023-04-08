@@ -1,11 +1,11 @@
 use crate::abilities::Abilities;
 use crate::actions::Actions;
 use crate::buildings::BuildingTypes;
-use crate::color_system::ColorConflicts;
+use crate::color_system::{ColorConflicts, TileColor, TileColorStrength};
 use crate::game::GameData;
 use crate::player::PlayerPoints;
 use bevy::prelude::{Commands, Entity, Query, Res, ResMut, With};
-use bevy_ecs_tilemap::prelude::{TileColor, TilePos, TileStorage};
+use bevy_ecs_tilemap::prelude::{TilePos, TileStorage};
 use bevy_ggf::game_core::state::Changed;
 use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
@@ -26,7 +26,7 @@ pub fn run_ai_building(
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut player_query: Query<(Entity, &mut PlayerPoints, &Player, &mut Actions)>,
     game_data: Res<GameData>,
-    mut commands:Commands,
+    mut commands: Commands,
 ) {
     let Some((_, tile_storage)) = tile_storage_query
         .iter_mut()
@@ -56,10 +56,12 @@ pub fn run_ai_building(
             continue;
         }
 
+        let mut low_health_tile_pos = (TilePos::default(), 0usize);
+
         let mut sorted_highest_conflicts: Vec<(TilePos, usize)> = vec![];
         for (tile_pos, player_id_vec) in color_conflicts.conflicts.iter().filter(|value| {
             let tile_entity = tile_storage.get(&value.0).unwrap();
-            let Ok((entity, _, tile_object_stacks,  options)) = tiles.get_mut(tile_entity) else {
+            let Ok((entity, tile_pos, tile_object_stacks,  options)) = tiles.get_mut(tile_entity) else {
                 return false;
             };
 
@@ -70,7 +72,14 @@ pub fn run_ai_building(
             }
 
             if let Some((player_marker, tile_color)) = options {
-                return player_marker.id() == player.id();
+                if player_marker.id() == player.id() {
+                    if tile_color.get_number_representation() < low_health_tile_pos.1 as u32 {
+                        low_health_tile_pos.1 = tile_color.get_number_representation() as usize;
+                        low_health_tile_pos.0 = *tile_pos;
+                    }
+                    return true;
+                }
+                return false;
             }
             return false;
         }) {
@@ -87,36 +96,39 @@ pub fn run_ai_building(
             sorted_highest_conflicts.push((*tile_pos, conflict_count));
             sorted_highest_conflicts.sort_by(|a, b| a.1.cmp(&b.1));
         }
-        if let Some(info) = sorted_highest_conflicts.get(0) {
-            let mut rng = thread_rng();
-            match info.1 {
-                0..=1 => {
-                    let chance = rng.gen_bool(0.5);
-                    actions.selected_building = match chance {
-                        true => BuildingTypes::Line,
-                        false => BuildingTypes::Pulser,
-                    }
-                }
-                2..=3 => {
-                    let chance = rng.gen_range(0..=2);
-                    actions.selected_building = match chance {
-                        0 => BuildingTypes::Scatter,
-                        1 => BuildingTypes::Line,
-                        _ => BuildingTypes::Pulser,
-                    }
-                }
-                _ => {
-                    let chance = rng.gen_bool(0.7);
-                    actions.selected_building = match chance {
-                        true => BuildingTypes::Scatter,
-                        false => BuildingTypes::Pulser,
-                    }
+
+        let info = match sorted_highest_conflicts.get(0) {
+            None => low_health_tile_pos,
+            Some(info) => *info,
+        };
+        let mut rng = thread_rng();
+        match info.1 {
+            0..=0 => {
+                let chance = rng.gen_bool(0.5);
+                actions.selected_building = match chance {
+                    true => BuildingTypes::Line,
+                    false => BuildingTypes::Pulser,
                 }
             }
-
-            actions.try_place_building = true;
-            actions.building_tile_pos = Some(info.0);
+            1..=1 => {
+                let chance = rng.gen_range(0..=2);
+                actions.selected_building = match chance {
+                    0 => BuildingTypes::Scatter,
+                    1 => BuildingTypes::Line,
+                    _ => BuildingTypes::Pulser,
+                }
+            }
+            _ => {
+                let chance = rng.gen_bool(0.6);
+                actions.selected_building = match chance {
+                    true => BuildingTypes::Scatter,
+                    false => BuildingTypes::Pulser,
+                }
+            }
         }
+
+        actions.try_place_building = true;
+        actions.building_tile_pos = Some(info.0);
         commands.entity(entity).insert(Changed::default());
     }
 }
@@ -135,7 +147,7 @@ pub fn run_ai_ability(
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut player_query: Query<(Entity, &mut PlayerPoints, &Player, &mut Actions)>,
     game_data: Res<GameData>,
-    mut commands:Commands,
+    mut commands: Commands,
 ) {
     let Some((_, tile_storage)) = tile_storage_query
         .iter_mut()
@@ -224,6 +236,5 @@ pub fn run_ai_ability(
             }
         }
         commands.entity(entity).insert(Changed::default());
-
     }
 }

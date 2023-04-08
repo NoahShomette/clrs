@@ -2,7 +2,7 @@ use crate::abilities::Abilities;
 use crate::actions::game_control::{place_ability, place_building};
 use bevy::prelude::KeyCode::Pause;
 use bevy::prelude::*;
-use bevy_ascii_terminal::Terminal;
+use bevy_ascii_terminal::{StringFormatter, Terminal};
 use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::game_core::Game;
 use bevy_ggf::mapping::tiles::Tile;
@@ -11,7 +11,9 @@ use bevy_ggf::player::{Player, PlayerMarker};
 use ns_defaults::camera::CursorWorldPos;
 
 use crate::buildings::BuildingTypes;
-use crate::game::{simulate_game, GameBuildSettings};
+use crate::game::{simulate_game, GameBuildSettings, GameData, BORDER_PADDING_TOTAL};
+use crate::game::draw::draw_game;
+use crate::menu::MenuNavigation;
 use crate::GameState;
 
 mod game_control;
@@ -88,9 +90,82 @@ fn handle_pause(
     }
 }
 
-pub fn paused_controls(mut commands: Commands, keyboard_input: Res<Input<KeyCode>>) {
+pub fn paused_controls(
+    mut commands: Commands,
+    keyboard_input: Res<Input<KeyCode>>,
+    mut term_query: Query<&mut Terminal>,
+    game: Res<GameData>,
+    mut menu_nav: Local<MenuNavigation>,
+    mut next_state: ResMut<NextState<GameState>>,
+    tiles: Query<Entity, With<Tile>>,
+    objects: Query<Entity, With<Object>>,
+    players: Query<Entity, With<Player>>,
+    player_marker: Query<Entity, With<PlayerMarker>>,
+) {
+    let mut term = term_query.single_mut();
+    let term_size = term.size();
+
+    term.put_string([0, term_size.y - 3], "PLAY".fg(Color::WHITE));
+    term.put_string([0, term_size.y - 5], "MENU".fg(Color::WHITE));
+
+    term.put_string(
+        [
+            (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2),
+            game.map_size_y + (BORDER_PADDING_TOTAL / 2) + 6,
+        ],
+        "!!! PAUSED !!!".fg(Color::GREEN),
+    );
+    let max_nav = 2;
+
+    if menu_nav.0 == 0 {
+        term.put_string([0, term_size.y - 3], "PLAY".fg(Color::BLUE));
+    }
+    if menu_nav.0 == 1 {
+        term.put_string([0, term_size.y - 5], "MENU".fg(Color::BLUE));
+    }
+
     if keyboard_input.just_pressed(KeyCode::Escape) {
         commands.insert_resource(UnPauseGame);
+    }
+
+    if keyboard_input.just_pressed(KeyCode::W) {
+        menu_nav.0 = menu_nav.0.saturating_sub(1);
+    }
+    if keyboard_input.just_pressed(KeyCode::S) {
+        menu_nav.0 = menu_nav.0.saturating_add(1);
+        let max_nav = 1;
+
+        if menu_nav.0 > max_nav {
+            menu_nav.0 = max_nav;
+        }
+    }
+
+    if menu_nav.0 == 0 && keyboard_input.just_pressed(KeyCode::Space)
+        || keyboard_input.just_pressed(KeyCode::Insert)
+    {
+        next_state.set(GameState::Playing);
+    }
+
+    if menu_nav.0 == 1 && keyboard_input.just_pressed(KeyCode::Space)
+        || keyboard_input.just_pressed(KeyCode::Insert)
+    {
+        next_state.set(GameState::Menu);
+
+        for entity in tiles.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in objects.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in players.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in player_marker.iter() {
+            commands.entity(entity).despawn();
+        }
+
+        commands.remove_resource::<Game>();
+        commands.init_resource::<GameBuildSettings>();
     }
 }
 
