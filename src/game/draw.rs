@@ -126,9 +126,11 @@ pub fn draw_game(
     for (player_marker, actions) in action_queries.iter() {
         if player_marker.id() == 0 {
             term.put_string([0, 8], "Buildings".fg(Color::WHITE));
+            term.put_string([0, 6], "<".fg(Color::WHITE));
             term.put_string([1, 6], "P".fg(Color::WHITE));
             term.put_string([3, 6], "S".fg(Color::WHITE));
             term.put_string([5, 6], "L".fg(Color::WHITE));
+            term.put_string([6, 6], ">".fg(Color::WHITE));
 
             match actions.selected_building {
                 BuildingTypes::Pulser => {
@@ -145,23 +147,25 @@ pub fn draw_game(
             term.put_string([0, 10], "---------".fg(Color::WHITE));
 
             term.put_string([0, 12], "Abilities".fg(Color::WHITE));
-            term.put_string([1, 14], "N".fg(Color::WHITE));
-            term.put_string([1, 16], "S".fg(Color::WHITE));
-            term.put_string([1, 18], "E".fg(Color::WHITE));
-
+            term.put_string([1, 14], "v".fg(Color::WHITE));
+            term.put_string([1, 15], "N".fg(Color::WHITE));
+            term.put_string([1, 17], "S".fg(Color::WHITE));
+            term.put_string([1, 19], "E".fg(Color::WHITE));
+            term.put_string([1, 20], "^".fg(Color::WHITE));
+            
             match actions.selected_ability {
                 Abilities::Nuke => {
-                    term.put_string([1, 14], "N".fg(Color::BLUE));
+                    term.put_string([1, 15], "N".fg(Color::BLUE));
                 }
                 Abilities::Sacrifice => {
-                    term.put_string([1, 16], "S".fg(Color::BLUE));
+                    term.put_string([1, 17], "S".fg(Color::BLUE));
                 }
                 Abilities::Expand => {
-                    term.put_string([1, 18], "E".fg(Color::BLUE));
+                    term.put_string([1, 19], "E".fg(Color::BLUE));
                 }
             }
 
-            term.put_string([0, 20], "---------".fg(Color::WHITE));
+            term.put_string([0, 21], "---------".fg(Color::WHITE));
         }
     }
 

@@ -17,7 +17,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "clrs".to_string(),
-                resolution: (1920., 1080.).into(),
+                resolution: (1280., 720.).into(),
                 canvas: Some("#bevy".to_owned()),
                 //mode: WindowMode::Fullscreen,
                 ..default()
