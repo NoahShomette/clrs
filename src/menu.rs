@@ -115,8 +115,13 @@ fn handle_menu(
     }
     if keyboard_input.just_pressed(KeyCode::S) {
         menu_nav.0 = menu_nav.0.saturating_add(1);
-        if menu_nav.0 > 3 {
-            menu_nav.0 = 3;
+        let max_nav = 2;
+
+        #[cfg(not(target_arch = "wasm32"))] 
+            let max_nav = 3;
+        
+        if menu_nav.0 > max_nav {
+            menu_nav.0 = max_nav;
         }
     }
 

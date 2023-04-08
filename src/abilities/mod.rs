@@ -1,53 +1,24 @@
-﻿mod nuke;
+﻿pub mod expand;
+pub mod nuke;
 
 use crate::buildings::Activate;
 use bevy::prelude::{
     Commands, Component, Entity, FromReflect, Query, Reflect, Res, ResMut, Time, Timer, TimerMode,
     With, Without,
 };
-use bevy_ecs_tilemap::prelude::TileStorage;
 use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
-use bevy_ggf::mapping::tiles::Tile;
-use bevy_ggf::mapping::MapId;
-use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId};
-use bevy_ggf::player::PlayerMarker;
+use bevy_ggf::object::{Object, ObjectId};
 
-pub fn destroy_buildings(
-    abilities: Query<
-        (
-            Entity,
-            &PlayerMarker,
-            &ObjectId,
-            &ObjectGridPosition,
-            &AbilityMarker,
-        ),
-        (With<Object>, With<DestroyAbility>),
-    >,
-    mut tiles: Query<(Entity, &PlayerMarker), (Without<Object>, With<Tile>)>,
-    mut tile_storage_query: Query<(&MapId, &TileStorage)>,
+pub fn destroy_abilities(
+    abilities: Query<(Entity, &ObjectId, &AbilityMarker), (With<Object>, With<DestroyAbility>)>,
     mut commands: Commands,
     mut despawn_objects: ResMut<DespawnedObjects>,
 ) {
-    for (building_entity, player_marker, object_id, object_grid_pos, ability) in abilities.iter() {
-        let Some((_, tile_storage)) = tile_storage_query
-            .iter_mut()
-            .find(|(id, _)| id == &&MapId{ id: 1 })else {
-            continue;
-        };
-
-        let tile_entity = tile_storage.get(&object_grid_pos.tile_position).unwrap();
-
-        let Ok((entity, tile_marker)) = tiles.get_mut(tile_entity) else {
-            continue;
-        };
-
-        if player_marker != tile_marker && ability.requires_player_territory {
-            println!("killing abilities");
-            despawn_objects
-                .despawned_objects
-                .insert(*object_id, Changed::default());
-            commands.entity(building_entity).despawn();
-        }
+    for (building_entity, object_id, ability) in abilities.iter() {
+        despawn_objects
+            .despawned_objects
+            .insert(*object_id, Changed::default());
+        commands.entity(building_entity).despawn();
     }
 }
 
@@ -74,7 +45,7 @@ pub enum Abilities {
     #[default]
     Nuke,
     Sacrifice,
-    Boost,
+    Expand,
 }
 
 #[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]

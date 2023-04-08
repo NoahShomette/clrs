@@ -1,5 +1,5 @@
 use crate::abilities::Abilities;
-use crate::actions::game_control::place_building;
+use crate::actions::game_control::{place_ability, place_building};
 use bevy::prelude::KeyCode::Pause;
 use bevy::prelude::*;
 use bevy_ascii_terminal::Terminal;
@@ -28,6 +28,11 @@ impl Plugin for ActionsPlugin {
         app.add_system(handle_pause);
         app.add_system(
             place_building
+                .in_set(OnUpdate(GameState::Playing))
+                .after(update_actions),
+        );
+        app.add_system(
+            place_ability
                 .in_set(OnUpdate(GameState::Playing))
                 .after(update_actions),
         );
@@ -124,6 +129,11 @@ pub fn update_actions(
     }
 
     for (player, mut actions) in actions.iter_mut() {
+        actions.tile_pos = None;
+        actions.target_world_pos = false;
+        actions.placed_ability = false;
+        actions.placed_building = false;
+        
         if player.id() == 0 {
             if mouse.just_pressed(MouseButton::Left) {
                 actions.placed_building = true;
@@ -140,9 +150,9 @@ pub fn update_actions(
                         actions.selected_ability = Abilities::Sacrifice;
                     }
                     Abilities::Sacrifice => {
-                        actions.selected_ability = Abilities::Boost;
+                        actions.selected_ability = Abilities::Expand;
                     }
-                    Abilities::Boost => {}
+                    Abilities::Expand => {}
                 }
             }
 
@@ -152,7 +162,7 @@ pub fn update_actions(
                     Abilities::Sacrifice => {
                         actions.selected_ability = Abilities::Nuke;
                     }
-                    Abilities::Boost => {
+                    Abilities::Expand => {
                         actions.selected_ability = Abilities::Sacrifice;
                     }
                 }

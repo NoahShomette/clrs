@@ -2,6 +2,8 @@
 mod end_game;
 mod state;
 
+use crate::abilities::nuke::simulate_nukes;
+use crate::abilities::{destroy_abilities, update_ability_timers};
 use crate::actions::Actions;
 use crate::ai::run_ai;
 use crate::buildings::line::simulate_lines;
@@ -11,7 +13,8 @@ use crate::buildings::{
     destroy_buildings, update_building_timers, Activate, Building, BuildingCooldown, BuildingMarker,
 };
 use crate::color_system::{
-    handle_color_conflicts, update_color_conflicts, ColorConflictEvent, ColorConflicts, TileColor,
+    handle_color_conflict_guarantees, handle_color_conflicts, update_color_conflicts,
+    ColorConflictEvent, ColorConflictGuarantees, ColorConflicts, TileColor,
 };
 use crate::game::draw::{draw_game, draw_game_over};
 use crate::game::end_game::{check_game_ended, update_game_end_state};
@@ -37,6 +40,7 @@ use bevy_ggf::object::{
     Object, ObjectClass, ObjectGridPosition, ObjectGroup, ObjectInfo, ObjectType,
 };
 use bevy_ggf::player::{Player, PlayerMarker};
+use crate::abilities::expand::simulate_expands;
 
 pub struct GameCorePlugin;
 impl Plugin for GameCorePlugin {
@@ -221,6 +225,20 @@ pub fn start_game(world: &mut World) {
         name: String::from("Scatter"),
         object_group: object_group_colorers.clone(),
     };
+
+    let object_type_nuke: ObjectType = ObjectType {
+        name: String::from("Nuke"),
+        object_group: object_group_colorers.clone(),
+    };
+    let object_type_sacrifice: ObjectType = ObjectType {
+        name: String::from("Sacrifice"),
+        object_group: object_group_colorers.clone(),
+    };
+    let object_type_expand: ObjectType = ObjectType {
+        name: String::from("Expand"),
+        object_group: object_group_colorers.clone(),
+    };
+
     game_data.object_classes.insert(
         object_class_building.name.clone(),
         object_class_building.clone(),
@@ -239,6 +257,18 @@ pub fn start_game(world: &mut World) {
         object_type_scatter.name.clone(),
         object_type_scatter.clone(),
     );
+
+    game_data
+        .object_types
+        .insert(object_type_nuke.name.clone(), object_type_nuke.clone());
+    game_data.object_types.insert(
+        object_type_sacrifice.name.clone(),
+        object_type_sacrifice.clone(),
+    );
+    game_data
+        .object_types
+        .insert(object_type_expand.name.clone(), object_type_expand.clone());
+
     let tile_stack_rules = TileObjectStacks::new(vec![
         (
             stacking_class_building.clone(),
@@ -377,14 +407,25 @@ pub fn setup_game(
         (
             apply_system_buffers,
             update_building_timers,
+            update_ability_timers,
             apply_system_buffers,
             simulate_pulsers,
             simulate_lines,
             simulate_scatterers,
-            update_color_conflicts,
+            simulate_nukes,
+            simulate_expands,
+        )
+            .chain()
+            .in_base_set(GameSets::Core),
+    );
+    schedule.add_systems(
+        (
+            update_color_conflicts.after(simulate_expands),
             run_ai,
+            handle_color_conflict_guarantees,
             handle_color_conflicts,
             destroy_buildings,
+            destroy_abilities,
             apply_system_buffers,
         )
             .chain()
@@ -454,6 +495,8 @@ pub fn setup_game(
     game.game_world.init_resource::<ColorConflicts>();
     game.game_world
         .init_resource::<Events<ColorConflictEvent>>();
+    game.game_world
+        .init_resource::<Events<ColorConflictGuarantees>>();
     game.game_world.init_resource::<Time>();
 
     game.register_component::<ObjectInfo>();

@@ -156,7 +156,7 @@ pub fn draw_game(
                 Abilities::Sacrifice => {
                     term.put_string([1, 16], "S".fg(Color::BLUE));
                 }
-                Abilities::Boost => {
+                Abilities::Expand => {
                     term.put_string([1, 18], "E".fg(Color::BLUE));
                 }
             }
@@ -373,6 +373,33 @@ pub fn draw_game(
                         object_pos.tile_position.y + BORDER_PADDING_TOTAL / 2,
                     ],
                     'S'.fg(Color::WHITE),
+                );
+            }
+            "Nuke" => {
+                term.put_char(
+                    [
+                        object_pos.tile_position.x + BORDER_PADDING_TOTAL / 2,
+                        object_pos.tile_position.y + BORDER_PADDING_TOTAL / 2,
+                    ],
+                    'N'.fg(Color::GRAY),
+                );
+            }
+            "Sacrifice" => {
+                term.put_char(
+                    [
+                        object_pos.tile_position.x + BORDER_PADDING_TOTAL / 2,
+                        object_pos.tile_position.y + BORDER_PADDING_TOTAL / 2,
+                    ],
+                    'S'.fg(Color::GRAY),
+                );
+            }
+            "Expand" => {
+                term.put_char(
+                    [
+                        object_pos.tile_position.x + BORDER_PADDING_TOTAL / 2,
+                        object_pos.tile_position.y + BORDER_PADDING_TOTAL / 2,
+                    ],
+                    'E'.fg(Color::GRAY),
                 );
             }
             _ => {}

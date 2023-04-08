@@ -25,20 +25,20 @@ pub fn update_game_state(world: &mut World) {
                 .iter_mut()
                 .find(|(_, id, _)| id == &&tile.tile_pos)
             {
+                world.entity_mut(entity).despawn();
+                let entity = world.spawn_empty().id();
                 for component in tile.components.into_iter() {
                     let type_info = component.type_name();
                     if let Some(type_registration) = registration.get_with_name(type_info) {
                         if let Some(reflect_component) =
                             type_registration.data::<ReflectComponent>()
                         {
-                            reflect_component.remove(&mut world.entity_mut(entity));
                             reflect_component.insert(&mut world.entity_mut(entity), &*component);
                         }
                     }
                 }
             } else {
                 let mut entity = world.spawn_empty();
-
                 for component in tile.components {
                     let type_info = component.type_name();
                     if let Some(type_registration) = registration.get_with_name(type_info) {
@@ -64,13 +64,14 @@ pub fn update_game_state(world: &mut World) {
                 .iter_mut()
                 .find(|(_, id)| id == &&object.object_id)
             {
+                world.entity_mut(entity).despawn();
+                let entity = world.spawn_empty().id();
                 for component in object.components {
                     let type_info = component.type_name();
                     if let Some(type_registration) = registration.get_with_name(type_info) {
                         if let Some(reflect_component) =
                             type_registration.data::<ReflectComponent>()
                         {
-                            reflect_component.remove(&mut world.entity_mut(entity));
                             reflect_component.insert(&mut world.entity_mut(entity), &*component);
                         }
                     }
@@ -84,7 +85,6 @@ pub fn update_game_state(world: &mut World) {
                         if let Some(reflect_component) =
                             type_registration.data::<ReflectComponent>()
                         {
-                            reflect_component.remove(&mut world.entity_mut(entity));
                             reflect_component.insert(&mut world.entity_mut(entity), &*component);
                         }
                     }
@@ -103,13 +103,14 @@ pub fn update_game_state(world: &mut World) {
                 .iter_mut()
                 .find(|(_, id)| id == &&player.player_id)
             {
+                world.entity_mut(entity).despawn();
+                let entity = world.spawn_empty().id();
                 for component in player.components {
                     let type_info = component.type_name();
                     if let Some(type_registration) = registration.get_with_name(type_info) {
                         if let Some(reflect_component) =
                             type_registration.data::<ReflectComponent>()
                         {
-                            reflect_component.remove(&mut world.entity_mut(entity));
                             reflect_component.insert(&mut world.entity_mut(entity), &*component);
                         }
                     }
@@ -122,7 +123,6 @@ pub fn update_game_state(world: &mut World) {
                         if let Some(reflect_component) =
                             type_registration.data::<ReflectComponent>()
                         {
-                            reflect_component.remove(&mut world.entity_mut(entity));
                             reflect_component.insert(&mut world.entity_mut(entity), &*component);
                         }
                     }

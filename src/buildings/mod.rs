@@ -96,9 +96,9 @@ pub enum BuildingTypes {
 
 #[derive(Default, Clone, Copy, Eq, Hash, Debug, PartialEq)]
 pub struct TileNode {
-    cost: Option<u32>,
-    prior_node: TilePos,
-    tile_pos: TilePos,
+    pub(crate) cost: Option<u32>,
+    pub(crate) prior_node: TilePos,
+    pub(crate) tile_pos: TilePos,
 }
 
 pub fn get_neighbors_tilepos(
@@ -131,7 +131,7 @@ pub fn get_neighbors_tilepos(
     neighbor_tiles
 }
 
-fn tile_cost_check(
+pub fn tile_cost_check(
     max_cost: u32,
     tile_pos: &TilePos,
     move_from_tile_pos: &TilePos,
@@ -159,7 +159,7 @@ fn tile_cost_check(
 }
 
 /// Returns a mutable reference for both nodes specified and returns them in the same order
-fn get_two_node_mut(
+pub fn get_two_node_mut(
     tiles: &mut HashMap<TilePos, TileNode>,
     node_one: TilePos,
     node_two: TilePos,

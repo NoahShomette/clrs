@@ -124,7 +124,7 @@ pub fn simulate_lines(
                         &player_marker.id(),
                         neighbor.0,
                         tile_terrain_info,
-                        options,
+                        &options,
                         &mut event_writer,
                     ) {
                         unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
