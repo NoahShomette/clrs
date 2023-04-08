@@ -52,7 +52,8 @@ pub struct Actions {
     pub selected_building: BuildingTypes,
     pub selected_ability: Abilities,
     pub target_world_pos: bool,
-    pub tile_pos: Option<TilePos>,
+    pub building_tile_pos: Option<TilePos>,
+    pub ability_tile_pos: Option<TilePos>,
 }
 
 #[derive(Default, Resource)]
@@ -134,7 +135,7 @@ pub fn update_actions(
     }
 
     for (player, mut actions) in actions.iter_mut() {
-        actions.tile_pos = None;
+        actions.building_tile_pos = None;
         actions.target_world_pos = false;
         actions.try_place_ability = false;
         actions.try_place_building = false;

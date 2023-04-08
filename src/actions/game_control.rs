@@ -53,8 +53,8 @@ pub fn place_building(
                 } else {
                     continue;
                 }
-            } else if actions.tile_pos.is_some() {
-                target_tile_pos = actions.tile_pos.unwrap();
+            } else if actions.building_tile_pos.is_some() {
+                target_tile_pos = actions.building_tile_pos.unwrap();
             } else {
                 continue;
             }
@@ -253,8 +253,8 @@ pub fn place_ability(
                 } else {
                     continue;
                 }
-            } else if actions.tile_pos.is_some() {
-                target_tile_pos = actions.tile_pos.unwrap();
+            } else if actions.ability_tile_pos.is_some() {
+                target_tile_pos = actions.ability_tile_pos.unwrap();
             } else {
                 continue;
             }

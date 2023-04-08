@@ -1,4 +1,4 @@
-﻿mod draw;
+mod draw;
 mod end_game;
 mod state;
 
@@ -7,14 +7,17 @@ use crate::abilities::fortify::simulate_fortifies;
 use crate::abilities::nuke::simulate_nukes;
 use crate::abilities::{destroy_abilities, update_ability_timers};
 use crate::actions::Actions;
-use crate::ai::run_ai;
+use crate::ai::{run_ai_ability, run_ai_building};
 use crate::buildings::line::simulate_lines;
 use crate::buildings::pulser::{simulate_pulsers, Pulser};
 use crate::buildings::scatter::simulate_scatterers;
 use crate::buildings::{
     destroy_buildings, update_building_timers, Activate, Building, BuildingCooldown, BuildingMarker,
 };
-use crate::color_system::{handle_color_conflict_guarantees, handle_color_conflicts, update_color_conflicts, ColorConflictEvent, ColorConflictGuarantees, ColorConflicts, TileColor, PlayerTileChangedCount};
+use crate::color_system::{
+    handle_color_conflict_guarantees, handle_color_conflicts, update_color_conflicts,
+    ColorConflictEvent, ColorConflictGuarantees, ColorConflicts, PlayerTileChangedCount, TileColor,
+};
 use crate::game::draw::{draw_game, draw_game_over};
 use crate::game::end_game::{check_game_ended, update_game_end_state};
 use crate::game::state::update_game_state;
@@ -427,7 +430,8 @@ pub fn setup_game(
     schedule.add_systems(
         (
             update_color_conflicts.after(simulate_expands),
-            run_ai,
+            run_ai_building,
+            run_ai_ability,
             handle_color_conflict_guarantees,
             handle_color_conflicts,
             destroy_buildings,
@@ -504,7 +508,8 @@ pub fn setup_game(
 
     world.insert_resource(game_data.clone());
     game.game_world.insert_resource(game_data);
-    game.game_world.insert_resource(PlayerTileChangedCount::default());
+    game.game_world
+        .insert_resource(PlayerTileChangedCount::default());
 
     game.build(world);
 }

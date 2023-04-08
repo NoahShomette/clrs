@@ -66,7 +66,7 @@ fn control_fortify_expand_sound(
             println!("playing fortify-expand audio");
             audio
                 .play(audio_assets.fortify_expand.clone())
-                .with_volume(0.3);
+                .with_volume(0.2);
         }
     }
 }
@@ -89,7 +89,7 @@ fn control_lost_tile_sound(
 ) {
     let changed_tiles = game.game_world.resource::<PlayerTileChangedCount>();
     if changed_tiles.player_lost_tiles > 0 {
-        audio.play(audio_assets.lost_tile.clone()).with_volume(0.1);
+        audio.play(audio_assets.lost_tile.clone()).with_volume(0.01);
     }
 }
 
@@ -105,7 +105,7 @@ fn control_menu_sound(
             && audio_settings.0 < 3
         {
             println!("playing menu audio");
-            audio.play(audio_assets.menu.clone()).with_volume(0.3);
+            //audio.play(audio_assets.menu.clone()).with_volume(0.3);
         }
     }
 }
@@ -122,7 +122,7 @@ fn control_nuke_sound(
             && audio_settings.0 < 3
         {
             println!("playing nuke audio");
-            audio.play(audio_assets.nuke.clone()).with_volume(0.3);
+            audio.play(audio_assets.nuke.clone()).with_volume(0.2);
         }
     }
 }
@@ -138,7 +138,7 @@ fn control_place_build_sound(
             println!("playing place_building audio");
             audio
                 .play(audio_assets.place_build.clone())
-                .with_volume(0.3);
+                .with_volume(0.2);
         }
     }
 }

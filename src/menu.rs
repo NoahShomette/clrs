@@ -107,7 +107,7 @@ fn handle_menu(
 
     term.put_string([12, 8], "Abilities".fg(Color::GREEN));
     term.put_string([12, 6], "N -> Nuke".fg(Color::WHITE));
-    term.put_string([12, 4], "S -> Sacrifice".fg(Color::WHITE));
+    term.put_string([12, 4], "F -> Fortify".fg(Color::WHITE));
     term.put_string([12, 2], "E -> Expand".fg(Color::WHITE));
 
     if keyboard_input.just_pressed(KeyCode::W) {
@@ -117,9 +117,9 @@ fn handle_menu(
         menu_nav.0 = menu_nav.0.saturating_add(1);
         let max_nav = 2;
 
-        #[cfg(not(target_arch = "wasm32"))] 
-            let max_nav = 3;
-        
+        #[cfg(not(target_arch = "wasm32"))]
+        let max_nav = 3;
+
         if menu_nav.0 > max_nav {
             menu_nav.0 = max_nav;
         }

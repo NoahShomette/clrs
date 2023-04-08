@@ -1,4 +1,4 @@
-﻿use crate::abilities::Abilities;
+use crate::abilities::Abilities;
 use crate::actions::Actions;
 use crate::buildings::BuildingTypes;
 use crate::color_system::{PlayerColors, TileColor, TileColorStrength};
@@ -150,7 +150,7 @@ pub fn draw_game(
             term.put_string([1, 17], "F".fg(Color::WHITE));
             term.put_string([1, 19], "E".fg(Color::WHITE));
             term.put_string([1, 20], "^".fg(Color::WHITE));
-            
+
             match actions.selected_ability {
                 Abilities::Nuke => {
                     term.put_string([1, 15], "N".fg(Color::BLUE));

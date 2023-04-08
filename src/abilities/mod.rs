@@ -1,6 +1,6 @@
-﻿pub mod expand;
-pub mod nuke;
+pub mod expand;
 pub mod fortify;
+pub mod nuke;
 
 use crate::buildings::Activate;
 use bevy::prelude::{
