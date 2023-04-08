@@ -27,15 +27,15 @@ pub fn draw_game_over(
         for x in 0..20 {
             term.clear_string(
                 [
-                    x + (BORDER_PADDING_TOTAL / 2),
-                    y + (BORDER_PADDING_TOTAL / 2),
+                    x + (BORDER_PADDING_TOTAL / 2) + (term_size.x / 4),
+                    y + (BORDER_PADDING_TOTAL / 2) + (term_size.y / 4),
                 ],
                 1,
             );
             term.put_color(
                 [
-                    x + (BORDER_PADDING_TOTAL / 2),
-                    y + (BORDER_PADDING_TOTAL / 2),
+                    x + (BORDER_PADDING_TOTAL / 2) + (term_size.x / 4),
+                    y + (BORDER_PADDING_TOTAL / 2) + (term_size.y / 4),
                 ],
                 Color::BLACK.bg(),
             );

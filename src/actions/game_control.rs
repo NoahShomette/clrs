@@ -1,4 +1,5 @@
 use crate::abilities::expand::Expand;
+use crate::abilities::fortify::Fortify;
 use crate::abilities::nuke::Nuke;
 use crate::abilities::{Abilities, Ability, AbilityCooldown, AbilityMarker};
 use crate::actions::Actions;
@@ -16,12 +17,11 @@ use bevy_ecs_tilemap::prelude::{TilePos, TileStorage};
 use bevy_ggf::game_core::command::GameCommands;
 use bevy_ggf::game_core::state::Changed;
 use bevy_ggf::game_core::Game;
-use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks};
+use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectInfo};
 use bevy_ggf::player::{Player, PlayerMarker};
 use ns_defaults::camera::CursorWorldPos;
-use crate::abilities::fortify::Fortify;
 
 pub fn place_building(
     cursor_world_pos: Res<CursorWorldPos>,
@@ -39,7 +39,7 @@ pub fn place_building(
         } else {
             player_id = player.unwrap().id();
         }
-        if actions.placed_building {
+        if actions.try_place_building {
             let (mut term, to_world) = term_query.single_mut();
             let mut target_tile_pos = TilePos::default();
             if actions.target_world_pos {
@@ -82,6 +82,8 @@ pub fn place_building(
             match actions.selected_building {
                 BuildingTypes::Pulser => {
                     if player_points.building_points >= 50 {
+                        actions.placed_building = true;
+
                         let _ = game_commands.spawn_object(
                             (
                                 ObjectGridPosition {
@@ -109,8 +111,8 @@ pub fn place_building(
                                     },
                                 },
                                 BuildingCooldown {
-                                    timer: Timer::from_seconds(0.1, TimerMode::Once),
-                                    timer_reset: 0.1,
+                                    timer: Timer::from_seconds(0.15, TimerMode::Once),
+                                    timer_reset: 0.15,
                                 },
                                 BuildingMarker::default(),
                             ),
@@ -127,6 +129,8 @@ pub fn place_building(
                 }
                 BuildingTypes::Scatter => {
                     if player_points.building_points >= 50 {
+                        actions.placed_building = true;
+
                         let _ = game_commands.spawn_object(
                             (
                                 ObjectGridPosition {
@@ -172,6 +176,8 @@ pub fn place_building(
                 }
                 BuildingTypes::Line => {
                     if player_points.building_points >= 50 {
+                        actions.placed_building = true;
+
                         let _ = game_commands.spawn_object(
                             (
                                 ObjectGridPosition {
@@ -233,7 +239,7 @@ pub fn place_ability(
         } else {
             player_id = player.unwrap().id();
         }
-        if actions.placed_ability {
+        if actions.try_place_ability {
             let (mut term, to_world) = term_query.single_mut();
             let mut target_tile_pos = TilePos::default();
             if actions.target_world_pos {
@@ -266,6 +272,8 @@ pub fn place_ability(
             match actions.selected_ability {
                 Abilities::Nuke => {
                     if player_points.ability_points >= 50 {
+                        actions.placed_ability = true;
+
                         let _ = game_commands.spawn_object(
                             (
                                 ObjectGridPosition {
@@ -321,6 +329,8 @@ pub fn place_ability(
                     };
 
                     if player_points.ability_points >= 50 && player_marker.id() == player_id {
+                        actions.placed_ability = true;
+
                         let _ = game_commands.spawn_object(
                             (
                                 ObjectGridPosition {
@@ -370,6 +380,8 @@ pub fn place_ability(
                 }
                 Abilities::Expand => {
                     if player_points.ability_points >= 50 {
+                        actions.placed_ability = true;
+
                         let _ = game_commands.spawn_object(
                             (
                                 ObjectGridPosition {

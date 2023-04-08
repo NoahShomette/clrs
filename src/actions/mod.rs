@@ -11,7 +11,7 @@ use bevy_ggf::player::{Player, PlayerMarker};
 use ns_defaults::camera::CursorWorldPos;
 
 use crate::buildings::BuildingTypes;
-use crate::game::GameBuildSettings;
+use crate::game::{simulate_game, GameBuildSettings};
 use crate::GameState;
 
 mod game_control;
@@ -26,15 +26,18 @@ impl Plugin for ActionsPlugin {
         app.add_system(paused_controls.in_set(OnUpdate(GameState::Paused)));
         app.add_system(ended_controls.in_set(OnUpdate(GameState::Ended)));
         app.add_system(handle_pause);
+
         app.add_system(
             place_building
-                .in_set(OnUpdate(GameState::Playing))
-                .after(update_actions),
+                .after(simulate_game)
+                .in_schedule(CoreSchedule::FixedUpdate)
+                .run_if(in_state(GameState::Playing)),
         );
         app.add_system(
             place_ability
-                .in_set(OnUpdate(GameState::Playing))
-                .after(update_actions),
+                .after(place_building)
+                .in_schedule(CoreSchedule::FixedUpdate)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -42,6 +45,8 @@ impl Plugin for ActionsPlugin {
 #[derive(Default, Component, Reflect, FromReflect)]
 #[reflect(Component)]
 pub struct Actions {
+    pub try_place_building: bool,
+    pub try_place_ability: bool,
     pub placed_building: bool,
     pub placed_ability: bool,
     pub selected_building: BuildingTypes,
@@ -131,16 +136,18 @@ pub fn update_actions(
     for (player, mut actions) in actions.iter_mut() {
         actions.tile_pos = None;
         actions.target_world_pos = false;
-        actions.placed_ability = false;
+        actions.try_place_ability = false;
+        actions.try_place_building = false;
         actions.placed_building = false;
-        
+        actions.placed_ability = false;
+
         if player.id() == 0 {
             if mouse.just_pressed(MouseButton::Left) {
-                actions.placed_building = true;
+                actions.try_place_building = true;
                 actions.target_world_pos = true;
             }
             if mouse.just_pressed(MouseButton::Right) {
-                actions.placed_ability = true;
+                actions.try_place_ability = true;
                 actions.target_world_pos = true;
             }
 

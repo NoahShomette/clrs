@@ -32,7 +32,14 @@ pub fn run_ai(
     };
 
     for (entity, mut player_points, player, mut actions) in player_query.iter_mut() {
-        if player_points.building_points < 50 && player_points.ability_points < 50 {
+        actions.tile_pos = None;
+        actions.target_world_pos = false;
+        actions.try_place_ability = false;
+        actions.try_place_building = false;
+        actions.placed_building = false;
+        actions.placed_ability = false;
+
+        if player_points.building_points < 50 {
             continue;
         }
 
@@ -82,8 +89,8 @@ pub fn run_ai(
                     let chance = rng.gen_range(0..=2);
                     actions.selected_building = match chance {
                         0 => BuildingTypes::Scatter,
-                        1 => BuildingTypes::Pulser,
-                        _ => BuildingTypes::Line,
+                        1 => BuildingTypes::Line,
+                        _ => BuildingTypes::Pulser,
                     }
                 }
                 _ => {
@@ -95,7 +102,7 @@ pub fn run_ai(
                 }
             }
 
-            actions.placed_building = true;
+            actions.try_place_building = true;
             actions.tile_pos = Some(info.0);
         }
     }

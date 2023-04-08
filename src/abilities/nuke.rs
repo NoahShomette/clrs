@@ -75,7 +75,7 @@ pub fn simulate_nukes(
             affect_other_players: true,
             conflict_type: ConflictType::Damage,
         });
-
+        
         // unvisited nodes
         let mut unvisited_tiles: Vec<TileNode> = vec![TileNode {
             tile_pos: object_grid_position.tile_position,

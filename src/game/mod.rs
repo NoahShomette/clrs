@@ -2,6 +2,8 @@
 mod end_game;
 mod state;
 
+use crate::abilities::expand::simulate_expands;
+use crate::abilities::fortify::simulate_fortifies;
 use crate::abilities::nuke::simulate_nukes;
 use crate::abilities::{destroy_abilities, update_ability_timers};
 use crate::actions::Actions;
@@ -12,10 +14,7 @@ use crate::buildings::scatter::simulate_scatterers;
 use crate::buildings::{
     destroy_buildings, update_building_timers, Activate, Building, BuildingCooldown, BuildingMarker,
 };
-use crate::color_system::{
-    handle_color_conflict_guarantees, handle_color_conflicts, update_color_conflicts,
-    ColorConflictEvent, ColorConflictGuarantees, ColorConflicts, TileColor,
-};
+use crate::color_system::{handle_color_conflict_guarantees, handle_color_conflicts, update_color_conflicts, ColorConflictEvent, ColorConflictGuarantees, ColorConflicts, TileColor, PlayerTileChangedCount};
 use crate::game::draw::{draw_game, draw_game_over};
 use crate::game::end_game::{check_game_ended, update_game_end_state};
 use crate::game::state::update_game_state;
@@ -40,8 +39,6 @@ use bevy_ggf::object::{
     Object, ObjectClass, ObjectGridPosition, ObjectGroup, ObjectInfo, ObjectType,
 };
 use bevy_ggf::player::{Player, PlayerMarker};
-use crate::abilities::expand::simulate_expands;
-use crate::abilities::fortify::simulate_fortifies;
 
 pub struct GameCorePlugin;
 impl Plugin for GameCorePlugin {
@@ -70,7 +67,7 @@ impl Plugin for GameCorePlugin {
 
 pub const BORDER_PADDING_TOTAL: u32 = 20;
 
-fn simulate_game(world: &mut World) {
+pub fn simulate_game(world: &mut World) {
     world.resource_scope(|mut world, mut game: Mut<Game>| {
         world.resource_scope(|world, mut game_runtime: Mut<GameRuntime<TestRunner>>| {
             game.game_world
@@ -369,7 +366,13 @@ pub fn start_game(world: &mut World) {
         )) as Box<dyn GameCommand>);
     }
 
-    setup_game(tile_movement_costs, Some(commands), world, game_data);
+    setup_game(
+        tile_movement_costs,
+        Some(commands),
+        world,
+        game_data,
+        game_build_settings,
+    );
 
     let mut term: Mut<Terminal> = world.query::<&mut Terminal>().single_mut(world);
     term.resize([
@@ -401,6 +404,7 @@ pub fn setup_game(
     commands: Option<Vec<Box<dyn GameCommand>>>,
     world: &mut World,
     game_data: GameData,
+    game_build_settings: GameBuildSettings,
 ) {
     let mut schedule = Schedule::new();
     schedule.configure_sets((GameSets::Pre, GameSets::Core, GameSets::Post).chain());
@@ -453,46 +457,30 @@ pub fn setup_game(
     game.setup_movement(tile_movement_costs);
     game.setup_mapping();
 
-    let (player_id, entity_mut) = game.add_player(true);
-    let entity = entity_mut.id();
-    game.game_world.entity_mut(entity).insert(PlayerPoints {
-        building_points: 50,
-        ability_points: 0,
-    });
-    world
-        .spawn_empty()
-        .insert(Actions::default())
-        .insert(PlayerMarker::new(player_id));
-
-    let (player_id, entity_mut) = game.add_player(false);
-    let entity = entity_mut.id();
-    game.game_world
-        .entity_mut(entity)
-        .insert(PlayerPoints {
-            building_points: 50,
-            ability_points: 0,
-        })
-        .insert(Actions::default());
-
-    let (player_id, entity_mut) = game.add_player(false);
-    let entity = entity_mut.id();
-    game.game_world
-        .entity_mut(entity)
-        .insert(PlayerPoints {
-            building_points: 50,
-            ability_points: 0,
-        })
-        .insert(Actions::default());
-
-    let (player_id, entity_mut) = game.add_player(false);
-    let entity = entity_mut.id();
-    game.game_world
-        .entity_mut(entity)
-        .insert(PlayerPoints {
-            building_points: 50,
-            ability_points: 0,
-        })
-        .insert(Actions::default());
+    for player_id in 0..=game_build_settings.enemy_count {
+        if player_id == 0 {
+            let (player_id, entity_mut) = game.add_player(true);
+            let entity = entity_mut.id();
+            game.game_world.entity_mut(entity).insert(PlayerPoints {
+                building_points: 50,
+                ability_points: 0,
+            });
+            world
+                .spawn_empty()
+                .insert(Actions::default())
+                .insert(PlayerMarker::new(player_id));
+        } else {
+            let (player_id, entity_mut) = game.add_player(false);
+            let entity = entity_mut.id();
+            game.game_world
+                .entity_mut(entity)
+                .insert(PlayerPoints {
+                    building_points: 50,
+                    ability_points: 0,
+                })
+                .insert(Actions::default());
+        }
+    }
 
     game.game_world.init_resource::<ColorConflicts>();
     game.game_world
@@ -516,6 +504,7 @@ pub fn setup_game(
 
     world.insert_resource(game_data.clone());
     game.game_world.insert_resource(game_data);
+    game.game_world.insert_resource(PlayerTileChangedCount::default());
 
     game.build(world);
 }

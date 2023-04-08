@@ -24,6 +24,12 @@ impl Plugin for ColorSystemPlugin {
     }
 }
 
+#[derive(Default, Resource)]
+pub struct PlayerTileChangedCount {
+    pub player_gained_tiles: u32,
+    pub player_lost_tiles: u32,
+}
+
 /// Function that will take the tile query and the player, register a guaranteed conflict for the tile,
 /// and then check and return whether the checked tile is the given players team
 pub fn register_guaranteed_color_conflict(
@@ -146,6 +152,7 @@ pub fn update_color_conflicts(
 
 pub fn handle_color_conflicts(
     mut color_conflicts: ResMut<ColorConflicts>,
+    mut player_tiles_changed_count: ResMut<PlayerTileChangedCount>,
     mut commands: Commands,
     mut tiles: Query<
         (
@@ -158,6 +165,9 @@ pub fn handle_color_conflicts(
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut player_query: Query<(Entity, &mut PlayerPoints, &Player)>,
 ) {
+    player_tiles_changed_count.player_lost_tiles = 0;
+    player_tiles_changed_count.player_gained_tiles = 0;
+
     for (tile_pos, player_id_vec) in color_conflicts.conflicts.iter() {
         let mut id_hashmap: HashMap<usize, u32> = HashMap::default();
         let mut objects: Vec<usize> = vec![];
@@ -210,6 +220,12 @@ pub fn handle_color_conflicts(
                         Changed::default(),
                     ));
                     for (entity, mut player_points, player_id) in player_query.iter_mut() {
+                        if player_id.id() == 0 {
+                            player_tiles_changed_count.player_gained_tiles =
+                                player_tiles_changed_count
+                                    .player_gained_tiles
+                                    .saturating_add(1);
+                        }
                         if player_id.id() == highest.0 {
                             increase_ability_points(entity, &mut player_points, &mut commands);
                         }
@@ -219,7 +235,6 @@ pub fn handle_color_conflicts(
                 Some((tile_player_marker, mut tile_color)) => {
                     if highest.0 == tile_player_marker.id() {
                         if let TileColorStrength::Five = tile_color.tile_color_strength {
-                            //id_hashmap.remove(&highest.0);
                             handle_conflicts = false;
                         } else {
                             tile_color.strengthen();
@@ -230,6 +245,12 @@ pub fn handle_color_conflicts(
                         tile_color.damage();
                         commands.entity(entity).insert(Changed::default());
                         if let TileColorStrength::Neutral = tile_color.tile_color_strength {
+                            if tile_player_marker.id() == 0 {
+                                player_tiles_changed_count.player_lost_tiles =
+                                    player_tiles_changed_count
+                                        .player_lost_tiles
+                                        .saturating_add(1);
+                            }
                             commands.entity(entity).remove::<PlayerMarker>();
                             commands.entity(entity).remove::<TileColor>();
                         }
@@ -290,6 +311,7 @@ pub fn increase_ability_points(
 
 pub fn handle_color_conflict_guarantees(
     mut color_conflicts: ResMut<ColorConflicts>,
+    mut player_tiles_changed_count: ResMut<PlayerTileChangedCount>,
     mut commands: Commands,
     mut tiles: Query<
         (
@@ -301,9 +323,17 @@ pub fn handle_color_conflict_guarantees(
     >,
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
 ) {
+    player_tiles_changed_count.player_lost_tiles = 0;
+    player_tiles_changed_count.player_gained_tiles = 0;
+
     for (tile_pos, conflict_info) in color_conflicts.guaranteed_conflicts.iter() {
-        for (casting_player, affect_casting_player, affect_neutral, affect_other_players, conflict_type) in
-            conflict_info.iter()
+        for (
+            casting_player,
+            affect_casting_player,
+            affect_neutral,
+            affect_other_players,
+            conflict_type,
+        ) in conflict_info.iter()
         {
             let Some((_, tile_storage)) = tile_storage_query
                 .iter_mut()
@@ -320,6 +350,12 @@ pub fn handle_color_conflict_guarantees(
             match options {
                 None => {
                     if *affect_neutral && ConflictType::Damage != *conflict_type {
+                        if casting_player == &0 {
+                            player_tiles_changed_count.player_gained_tiles =
+                                player_tiles_changed_count
+                                    .player_gained_tiles
+                                    .saturating_add(1);
+                        }
                         commands.entity(entity).insert((
                             TileColor {
                                 tile_color_strength: TileColorStrength::One,
@@ -336,6 +372,11 @@ pub fn handle_color_conflict_guarantees(
                                 tile_color.damage();
                                 commands.entity(entity).insert(Changed::default());
                                 if let TileColorStrength::Neutral = tile_color.tile_color_strength {
+                                    player_tiles_changed_count.player_lost_tiles =
+                                        player_tiles_changed_count
+                                            .player_lost_tiles
+                                            .saturating_add(1);
+
                                     commands.entity(entity).remove::<PlayerMarker>();
                                     commands.entity(entity).remove::<TileColor>();
                                 }

@@ -47,7 +47,7 @@ pub fn destroy_buildings(
         };
 
         if player_marker != tile_marker
-            && tile_terrain_info.terrain_type.terrain_class.name.as_str() == "NonColorable"
+            || tile_terrain_info.terrain_type.terrain_class.name.as_str() == "NonColorable"
         {
             println!("killing buildings");
             despawn_objects
