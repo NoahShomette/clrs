@@ -34,9 +34,10 @@ body {
     height: 600px;
 }
 </style>
+    <script>window.addEventListener('contextmenu', (event) => event.preventDefault());</script>
+<link rel="preload" href="/clrs/clrs-f25a16f750f163f3_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
+<link rel="modulepreload" href="/clrs/clrs-f25a16f750f163f3.js"></head>
     
-<link rel="preload" href="/clrs/clrs-55336bb2233139fd_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
-<link rel="modulepreload" href="/clrs/clrs-55336bb2233139fd.js"></head>
     <body>
         <script>// Insert hack to make sound autoplay on Chrome as soon as the user interacts with the tab:
 // https://developers.google.com/web/updates/2018/11/web-audio-autoplay#moving-forward
@@ -108,4 +109,4 @@ body {
         </div>
     
 
-<script type="module">import init from '/clrs/clrs-55336bb2233139fd.js';init('/clrs/clrs-55336bb2233139fd_bg.wasm');</script></body></html>
+<script type="module">import init from '/clrs/clrs-f25a16f750f163f3.js';init('/clrs/clrs-f25a16f750f163f3_bg.wasm');</script></body></html>
