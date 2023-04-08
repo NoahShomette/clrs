@@ -1,8 +1,8 @@
 use crate::player::PlayerPoints;
 use bevy::app::{App, Plugin};
 use bevy::prelude::{
-    Color, Commands, Component, Entity, EventReader, EventWriter, FromReflect, Mut, Query, ResMut,
-    Resource, With, Without,
+    unwrap, Color, Commands, Component, Entity, EventReader, EventWriter, FromReflect, Mut, Query,
+    ResMut, Resource, With, Without,
 };
 use bevy::reflect::Reflect;
 use bevy::utils::HashMap;
@@ -20,7 +20,7 @@ pub struct ColorSystemPlugin;
 
 impl Plugin for ColorSystemPlugin {
     fn build(&self, app: &mut App) {
-        todo!()
+        app.init_resource::<PlayerColors>();
     }
 }
 
@@ -574,28 +574,108 @@ impl TileColor {
     }
 }
 
-pub enum PlayerColors {
-    Blue,
-    Red,
-    Green,
-    Purple,
+#[derive(Clone, Resource)]
+pub struct PlayerColors {
+    pub palette_index: usize,
+    pub current_palette: Palette,
+    pub palettes: Vec<Palette>,
+}
+
+impl Default for PlayerColors {
+    fn default() -> Self {
+        Self {
+            palette_index: 0,
+            current_palette: Palette {
+                player_colors: vec![
+                    String::from("d3bf77"),
+                    String::from("657a85"),
+                    String::from("5e9d6a"),
+                    String::from("45344a"),
+                ],
+                noncolorable_tile: "272135".to_string(),
+                colorable_tile: "272135".to_string(),
+            },
+            palettes: vec![
+                Palette {
+                    player_colors: vec![
+                        String::from("d3bf77"),
+                        String::from("657a85"),
+                        String::from("5e9d6a"),
+                        String::from("45344a"),
+                    ],
+                    noncolorable_tile: "272135".to_string(),
+                    colorable_tile: "272135".to_string(),
+                },
+                Palette {
+                    player_colors: vec![
+                        String::from("00177c"),
+                        String::from("84396c"),
+                        String::from("598344"),
+                        String::from("d09071"),
+                    ],
+                    noncolorable_tile: "272135".to_string(),
+                    colorable_tile: "272135".to_string(),
+                },
+                Palette {
+                    player_colors: vec![
+                        String::from("425e9a"),
+                        String::from("39a441"),
+                        String::from("de9139"),
+                        String::from("e6cb47"),
+                    ],
+                    noncolorable_tile: "272135".to_string(),
+                    colorable_tile: "272135".to_string(),
+                },
+                Palette {
+                    player_colors: vec![
+                        String::from("0392cf"),
+                        String::from("ee4035"),
+                        String::from("7bc043"),
+                        String::from("f37736"),
+                    ],
+                    noncolorable_tile: "272135".to_string(),
+                    colorable_tile: "fdf498".to_string(),
+                },
+                Palette {
+                    player_colors: vec![
+                        String::from("fff200"),
+                        String::from("e500ff"),
+                        String::from("00ddff"),
+                        String::from("000000"),
+                    ],
+                    noncolorable_tile: "272135".to_string(),
+                    colorable_tile: "ffffff".to_string(),
+                },
+            ],
+        }
+    }
 }
 
 impl PlayerColors {
-    pub fn get_color(player_id: usize) -> Color {
-        return match player_id {
-            0 => Color::BLUE,
-            1 => Color::RED,
-            2 => Color::GREEN,
-            _ => Color::INDIGO,
-        };
+    pub fn get_color(&self, player_id: usize) -> Color {
+        return Color::hex(self.current_palette.player_colors[player_id].clone()).unwrap();
     }
-    pub fn get_colors_from(&mut self) -> Color {
-        return match self {
-            PlayerColors::Blue => Color::BLUE,
-            PlayerColors::Red => Color::RED,
-            PlayerColors::Green => Color::GREEN,
-            PlayerColors::Purple => Color::INDIGO,
-        };
+    pub fn next_palette(&mut self) {
+        if self.palette_index.saturating_add(1) < self.palettes.len() {
+            self.palette_index = self.palette_index.saturating_add(1);
+            self.current_palette = self.palettes[self.palette_index].clone();
+        }
     }
+    pub fn prev_palette(&mut self) {
+        self.palette_index = self.palette_index.saturating_sub(1);
+        self.current_palette = self.palettes[self.palette_index].clone();
+    }
+    pub fn get_noncolorable(&self) -> Color {
+        return Color::hex(self.current_palette.noncolorable_tile.clone()).unwrap();
+    }
+    pub fn get_colorable(&self) -> Color {
+        return Color::hex(self.current_palette.colorable_tile.clone()).unwrap();
+    }
+}
+
+#[derive(Clone)]
+pub struct Palette {
+    pub player_colors: Vec<String>,
+    pub noncolorable_tile: String,
+    pub colorable_tile: String,
 }

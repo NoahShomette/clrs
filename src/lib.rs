@@ -16,6 +16,7 @@ use crate::loading::LoadingPlugin;
 use crate::menu::MenuPlugin;
 use crate::player::PlayerPlugin;
 
+use crate::color_system::ColorSystemPlugin;
 use crate::game::GameCorePlugin;
 use bevy::app::App;
 #[cfg(debug_assertions)]
@@ -50,6 +51,7 @@ impl Plugin for GamePlugin {
         app.add_plugins(BggfDefaultPlugins);
 
         app.add_state::<GameState>()
+            .add_plugin(ColorSystemPlugin)
             .add_plugin(LoadingPlugin)
             .add_plugin(MenuPlugin)
             .add_plugin(ActionsPlugin)

@@ -6,7 +6,7 @@ use crate::abilities::expand::simulate_expands;
 use crate::abilities::fortify::simulate_fortifies;
 use crate::abilities::nuke::simulate_nukes;
 use crate::abilities::{destroy_abilities, update_ability_timers};
-use crate::actions::{Actions, paused_controls};
+use crate::actions::{paused_controls, Actions};
 use crate::ai::{run_ai_ability, run_ai_building};
 use crate::buildings::line::simulate_lines;
 use crate::buildings::pulser::{simulate_pulsers, Pulser};
@@ -54,7 +54,11 @@ impl Plugin for GameCorePlugin {
         app.add_system(check_game_ended.in_set(OnUpdate(GameState::Paused)));
 
         app.add_system(draw_game.in_set(OnUpdate(GameState::Playing)));
-        app.add_system(draw_game.before(paused_controls).in_set(OnUpdate(GameState::Paused)));
+        app.add_system(
+            draw_game
+                .before(paused_controls)
+                .in_set(OnUpdate(GameState::Paused)),
+        );
         app.add_system(draw_game.in_set(OnUpdate(GameState::Ended)));
 
         app.add_system(draw_game_over.in_set(OnUpdate(GameState::Ended)));
@@ -359,12 +363,12 @@ pub fn start_game(world: &mut World) {
                 Building {
                     building_type: Pulser {
                         strength: 7,
-                        max_pulse_tiles: 3,
+                        max_pulse_tiles: 2,
                     },
                 },
                 BuildingCooldown {
                     timer: Timer::from_seconds(0.0, TimerMode::Once),
-                    timer_reset: 0.2,
+                    timer_reset: 0.15,
                 },
                 BuildingMarker::default(),
             ),

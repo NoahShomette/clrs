@@ -77,7 +77,7 @@ fn control_gain_tile_sound(
 ) {
     let changed_tiles = game.game_world.resource::<PlayerTileChangedCount>();
     if changed_tiles.player_gained_tiles > 0 {
-        audio.play(audio_assets.gain_tile.clone()).with_volume(0.1);
+        //audio.play(audio_assets.gain_tile.clone()).with_volume(0.01);
     }
 }
 
@@ -88,7 +88,7 @@ fn control_lost_tile_sound(
 ) {
     let changed_tiles = game.game_world.resource::<PlayerTileChangedCount>();
     if changed_tiles.player_lost_tiles > 0 {
-        audio.play(audio_assets.lost_tile.clone()).with_volume(0.01);
+        //audio.play(audio_assets.lost_tile.clone()).with_volume(0.01);
     }
 }
 

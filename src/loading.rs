@@ -34,8 +34,8 @@ pub struct AudioAssets {
     pub nuke: Handle<AudioSource>,
     #[asset(path = "audio/fortify_expand.wav")]
     pub fortify_expand: Handle<AudioSource>,
-    #[asset(path = "audio/Gain-Tile_6downpictheddhsds.wav")]
-    pub gain_tile: Handle<AudioSource>,
+    //#[asset(path = "audio/gain_tile.wav")]
+    // pub gain_tile: Handle<AudioSource>,
     #[asset(path = "audio/lost_tile.wav")]
     pub lost_tile: Handle<AudioSource>,
     #[asset(path = "audio/menu.wav")]

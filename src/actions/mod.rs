@@ -11,8 +11,9 @@ use bevy_ggf::player::{Player, PlayerMarker};
 use ns_defaults::camera::CursorWorldPos;
 
 use crate::buildings::BuildingTypes;
-use crate::game::{simulate_game, GameBuildSettings, GameData, BORDER_PADDING_TOTAL};
+use crate::color_system::PlayerColors;
 use crate::game::draw::draw_game;
+use crate::game::{simulate_game, GameBuildSettings, GameData, BORDER_PADDING_TOTAL};
 use crate::menu::MenuNavigation;
 use crate::GameState;
 
@@ -101,6 +102,7 @@ pub fn paused_controls(
     objects: Query<Entity, With<Object>>,
     players: Query<Entity, With<Player>>,
     player_marker: Query<Entity, With<PlayerMarker>>,
+    player_colors: Res<PlayerColors>,
 ) {
     let mut term = term_query.single_mut();
     let term_size = term.size();
@@ -113,15 +115,15 @@ pub fn paused_controls(
             (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2),
             game.map_size_y + (BORDER_PADDING_TOTAL / 2) + 6,
         ],
-        "!!! PAUSED !!!".fg(Color::GREEN),
+        "!!! PAUSED !!!".fg(player_colors.get_color(0)),
     );
     let max_nav = 2;
 
     if menu_nav.0 == 0 {
-        term.put_string([0, term_size.y - 3], "PLAY".fg(Color::BLUE));
+        term.put_string([0, term_size.y - 3], "PLAY".fg(player_colors.get_color(0)));
     }
     if menu_nav.0 == 1 {
-        term.put_string([0, term_size.y - 5], "MENU".fg(Color::BLUE));
+        term.put_string([0, term_size.y - 5], "MENU".fg(player_colors.get_color(0)));
     }
 
     if keyboard_input.just_pressed(KeyCode::Escape) {

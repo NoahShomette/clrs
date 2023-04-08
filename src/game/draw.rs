@@ -1,4 +1,4 @@
-﻿use crate::abilities::Abilities;
+use crate::abilities::Abilities;
 use crate::actions::Actions;
 use crate::buildings::BuildingTypes;
 use crate::color_system::{PlayerColors, TileColor, TileColorStrength};
@@ -19,6 +19,7 @@ use std::process::id;
 pub fn draw_game_over(
     mut term_query: Query<&mut Terminal>,
     game_ended: Res<GameEnded>,
+    player_colors: Res<PlayerColors>,
     game: Res<GameData>,
 ) {
     let mut term = term_query.single_mut();
@@ -36,18 +37,18 @@ pub fn draw_game_over(
 
     term.put_string(
         [(term_size.x / 2) - 10 + 2, (term_size.y / 2) + 10 - 4],
-        "!!! GAME OVER !!!".fg(Color::GREEN),
+        "!!! GAME OVER !!!".fg(player_colors.get_color(0)),
     );
 
     match game_ended.player_won {
         true => {
             term.put_string(
                 [(term_size.x / 2) - 10 + 4, (term_size.y / 2) + 10 - 6],
-                "YOU WON".fg(Color::BLUE),
+                "YOU WON".fg(player_colors.get_color(0)),
             );
         }
         false => {
-            let player_color = PlayerColors::get_color(game_ended.winning_id);
+            let player_color = player_colors.get_color(game_ended.winning_id);
             let ai_color_string = match game_ended.winning_id {
                 1 => "RED",
                 2 => "GREEN",
@@ -88,7 +89,7 @@ pub fn draw_game(
     player_queries: Query<(&Player, &PlayerPoints), Without<PlayerMarker>>,
     action_queries: Query<(&PlayerMarker, &Actions), Without<Player>>,
     game: Res<GameData>,
-    current_state: Res<State<GameState>>,
+    player_colors: Res<PlayerColors>,
 ) {
     let mut term = term_query.single_mut();
     let term_size = term.size();
@@ -98,7 +99,7 @@ pub fn draw_game(
             game.map_size_x + (BORDER_PADDING_TOTAL / 2) - 10,
             game.map_size_y + (BORDER_PADDING_TOTAL / 2) + 3,
         ],
-        "CLRS".fg(Color::GREEN),
+        "CLRS".fg(player_colors.get_color(0)),
     );
 
     for (player_query, player_points) in player_queries.iter() {
@@ -125,13 +126,13 @@ pub fn draw_game(
 
             match actions.selected_building {
                 BuildingTypes::Pulser => {
-                    term.put_string([1, 6], "P".fg(Color::BLUE));
+                    term.put_string([1, 6], "P".fg(player_colors.get_color(0)));
                 }
                 BuildingTypes::Scatter => {
-                    term.put_string([3, 6], "S".fg(Color::BLUE));
+                    term.put_string([3, 6], "S".fg(player_colors.get_color(0)));
                 }
                 BuildingTypes::Line => {
-                    term.put_string([5, 6], "L".fg(Color::BLUE));
+                    term.put_string([5, 6], "L".fg(player_colors.get_color(0)));
                 }
             }
 
@@ -146,13 +147,13 @@ pub fn draw_game(
 
             match actions.selected_ability {
                 Abilities::Nuke => {
-                    term.put_string([1, 15], "N".fg(Color::BLUE));
+                    term.put_string([1, 15], "N".fg(player_colors.get_color(0)));
                 }
                 Abilities::Fortify => {
-                    term.put_string([1, 17], "F".fg(Color::BLUE));
+                    term.put_string([1, 17], "F".fg(player_colors.get_color(0)));
                 }
                 Abilities::Expand => {
-                    term.put_string([1, 19], "E".fg(Color::BLUE));
+                    term.put_string([1, 19], "E".fg(player_colors.get_color(0)));
                 }
             }
 
@@ -182,7 +183,7 @@ pub fn draw_game(
         match option {
             None => {
                 let color: Color = match tile_terrain_info.terrain_type.name.as_str() {
-                    "BasicColorable" => Color::rgb(0.05, 0.05, 0.05),
+                    "BasicColorable" => player_colors.get_colorable(),
                     "NonColorable" => Color::BLACK,
                     _ => Color::BLACK,
                 };
@@ -202,8 +203,8 @@ pub fn draw_game(
                 match tile_color_strength.tile_color_strength {
                     TileColorStrength::Neutral => {
                         let color: Color = match tile_terrain_info.terrain_type.name.as_str() {
-                            "BasicColorable" => Color::rgb(0.05, 0.05, 0.05),
-                            "NonColorable" => Color::BLACK,
+                            "BasicColorable" => player_colors.get_colorable(),
+                            "NonColorable" => player_colors.get_noncolorable(),
                             _ => Color::BLACK,
                         };
                         term.put_color(
@@ -215,7 +216,7 @@ pub fn draw_game(
                         );
                     }
                     TileColorStrength::One => {
-                        let player_color = PlayerColors::get_color(player_marker.id());
+                        let player_color = player_colors.get_color(player_marker.id());
                         term.put_color(
                             [
                                 tile_pos.x + BORDER_PADDING_TOTAL / 2,
@@ -225,7 +226,7 @@ pub fn draw_game(
                         );
                     }
                     TileColorStrength::Two => {
-                        let player_color = PlayerColors::get_color(player_marker.id());
+                        let player_color = player_colors.get_color(player_marker.id());
                         term.put_color(
                             [
                                 tile_pos.x + BORDER_PADDING_TOTAL / 2,
@@ -235,7 +236,7 @@ pub fn draw_game(
                         );
                     }
                     TileColorStrength::Three => {
-                        let player_color = PlayerColors::get_color(player_marker.id());
+                        let player_color = player_colors.get_color(player_marker.id());
                         term.put_color(
                             [
                                 tile_pos.x + BORDER_PADDING_TOTAL / 2,
@@ -245,7 +246,7 @@ pub fn draw_game(
                         );
                     }
                     TileColorStrength::Four => {
-                        let player_color = PlayerColors::get_color(player_marker.id());
+                        let player_color = player_colors.get_color(player_marker.id());
                         term.put_color(
                             [
                                 tile_pos.x + BORDER_PADDING_TOTAL / 2,
@@ -255,7 +256,7 @@ pub fn draw_game(
                         );
                     }
                     TileColorStrength::Five => {
-                        let player_color = PlayerColors::get_color(player_marker.id());
+                        let player_color = player_colors.get_color(player_marker.id());
                         term.put_color(
                             [
                                 tile_pos.x + BORDER_PADDING_TOTAL / 2,
@@ -273,31 +274,32 @@ pub fn draw_game(
         let player_tile_count =
             *player_tile_count as f32 / (game.map_size_y as f32 * game.map_size_x as f32);
         if player_tile_count > 0.0 {
-            term.put_color([11, 1], Color::BLUE.bg());
+            term.put_color([11, 1], player_colors.get_color(0).bg());
         }
         if player_tile_count > 0.2 {
-            term.put_color([11, 2], Color::BLUE.bg());
+            term.put_color([11, 2], player_colors.get_color(0).bg());
         }
         if player_tile_count > 0.4 {
-            term.put_color([11, 3], Color::BLUE.bg());
+            term.put_color([11, 3], player_colors.get_color(0).bg());
         }
         if player_tile_count > 0.5 {
-            term.put_color([11, 4], Color::BLUE.bg());
+            term.put_color([11, 4], player_colors.get_color(0).bg());
         }
         if player_tile_count > 0.6 {
-            term.put_color([11, 5], Color::BLUE.bg());
+            term.put_color([11, 5], player_colors.get_color(0).bg());
         }
         if player_tile_count > 0.8 {
-            term.put_color([11, 6], Color::BLUE.bg());
+            term.put_color([11, 6], player_colors.get_color(0).bg());
         }
         if player_tile_count > 1.0 {
-            term.put_color([11, 7], Color::BLUE.bg());
+            term.put_color([11, 7], player_colors.get_color(0).bg());
         }
     }
 
     term.put_string(
         [14, 3],
-        String::from(format!("{}", player_tile_count.get(&0).unwrap_or(&0))).fg(Color::BLUE),
+        String::from(format!("{}", player_tile_count.get(&0).unwrap_or(&0)))
+            .fg(player_colors.get_color(0)),
     );
     term.put_string([14, 2], "-------".fg(Color::WHITE));
     term.put_string(
@@ -309,7 +311,7 @@ pub fn draw_game(
         if id == &0 {
             continue;
         }
-        let player_color = PlayerColors::get_color(*id);
+        let player_color = player_colors.get_color(*id);
         let diff = match id {
             3 => 26,
             2 => 24,

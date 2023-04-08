@@ -1,8 +1,11 @@
+use crate::color_system::PlayerColors;
 use crate::game::GameBuildSettings;
 use crate::GameState;
 use bevy::app::AppExit;
 use bevy::prelude::*;
-use bevy_ascii_terminal::{AutoCamera, Border, StringFormatter, Terminal, TerminalBundle, ToWorld};
+use bevy_ascii_terminal::{
+    AutoCamera, Border, ColorFormatter, StringFormatter, Terminal, TerminalBundle, ToWorld,
+};
 
 pub struct MenuPlugin;
 
@@ -16,7 +19,8 @@ impl Plugin for MenuPlugin {
 }
 
 fn setup_menu(mut commands: Commands, mut term_query: Query<&mut Terminal>) {
-    if let Ok(_) = term_query.get_single_mut() {
+    if let Ok(mut term) = term_query.get_single_mut() {
+        term.resize([30, 30]);
     } else {
         let term = Terminal::new([30, 30]).with_border(Border::single_line());
         commands
@@ -35,12 +39,13 @@ fn handle_menu(
     mut term_query: Query<&mut Terminal>,
     keyboard_input: Res<Input<KeyCode>>,
     mut exit: EventWriter<AppExit>,
+    mut player_colors: ResMut<PlayerColors>,
 ) {
     let mut term = term_query.single_mut();
 
     term.clear();
 
-    term.put_string([1, 28], "Hello world!".fg(Color::GREEN));
+    term.put_string([1, 28], "Hello world!".fg(player_colors.get_color(0)));
     term.put_string([1, 16], "CLRS".fg(Color::WHITE));
 
     term.put_string([1, 15], "----".fg(Color::WHITE));
@@ -67,23 +72,33 @@ fn handle_menu(
         String::from(format!("{}", game_build_settings.enemy_count)).fg(Color::WHITE),
     );
 
+    term.put_string([0, 5], "<".fg(Color::WHITE));
+    term.put_string([1, 5], "CLRS".fg(Color::WHITE));
+    term.put_string([6, 5], ">".fg(Color::WHITE));
+    term.put_color([1, 4], player_colors.get_color(0).bg());
+    term.put_color([2, 4], player_colors.get_color(1).bg());
+    term.put_color([3, 4], player_colors.get_color(2).bg());
+    term.put_color([4, 4], player_colors.get_color(3).bg());
+
     #[cfg(not(target_arch = "wasm32"))]
     term.put_string([1, 2], "QUIT".fg(Color::WHITE));
 
     if menu_nav.0 == 0 {
-        term.put_string([1, 13], "PLAY".fg(Color::BLUE));
+        term.put_string([1, 13], "PLAY".fg(player_colors.get_color(0)));
     }
 
     if menu_nav.0 == 1 {
-        term.put_string([1, 11], "MAP".fg(Color::BLUE));
+        term.put_string([1, 11], "MAP".fg(player_colors.get_color(0)));
     }
     if menu_nav.0 == 2 {
-        term.put_string([1, 8], "ENEMIES".fg(Color::BLUE));
+        term.put_string([1, 8], "ENEMIES".fg(player_colors.get_color(0)));
     }
-
-    #[cfg(not(target_arch = "wasm32"))]
     if menu_nav.0 == 3 {
-        term.put_string([1, 2], "QUIT".fg(Color::BLUE));
+        term.put_string([1, 5], "CLRS".fg(player_colors.get_color(0)));
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    if menu_nav.0 == 4 {
+        term.put_string([1, 2], "QUIT".fg(player_colors.get_color(0)));
     }
 
     term.put_string([10, 4], "|".fg(Color::WHITE));
@@ -100,12 +115,12 @@ fn handle_menu(
     term.put_string([10, 15], "|".fg(Color::WHITE));
     term.put_string([10, 16], "|".fg(Color::WHITE));
 
-    term.put_string([12, 18], "Buildings".fg(Color::GREEN));
+    term.put_string([12, 18], "Buildings".fg(player_colors.get_color(0)));
     term.put_string([12, 16], "P -> Pulser".fg(Color::WHITE));
     term.put_string([12, 14], "S -> Scatter".fg(Color::WHITE));
     term.put_string([12, 12], "L -> Line".fg(Color::WHITE));
 
-    term.put_string([12, 8], "Abilities".fg(Color::GREEN));
+    term.put_string([12, 8], "Abilities".fg(player_colors.get_color(0)));
     term.put_string([12, 6], "N -> Nuke".fg(Color::WHITE));
     term.put_string([12, 4], "F -> Fortify".fg(Color::WHITE));
     term.put_string([12, 2], "E -> Expand".fg(Color::WHITE));
@@ -115,10 +130,10 @@ fn handle_menu(
     }
     if keyboard_input.just_pressed(KeyCode::S) {
         menu_nav.0 = menu_nav.0.saturating_add(1);
-        let max_nav = 2;
+        let max_nav = 3;
 
         #[cfg(not(target_arch = "wasm32"))]
-        let max_nav = 3;
+        let max_nav = 4;
 
         if menu_nav.0 > max_nav {
             menu_nav.0 = max_nav;
@@ -136,27 +151,38 @@ fn handle_menu(
     if menu_nav.0 == 1 {
         if keyboard_input.just_pressed(KeyCode::A) {
             game_build_settings.decrease_map_size(modifier);
-            term.put_string([0, 11], "<".fg(Color::BLUE));
+            term.put_string([0, 11], "<".fg(player_colors.get_color(0)));
         }
         if keyboard_input.just_pressed(KeyCode::D) {
             game_build_settings.increase_map_size(modifier);
-            term.put_string([4, 11], ">".fg(Color::BLUE));
+            term.put_string([4, 11], ">".fg(player_colors.get_color(0)));
         }
     }
 
     if menu_nav.0 == 2 {
         if keyboard_input.just_pressed(KeyCode::A) {
             game_build_settings.decrease_enemy_count();
-            term.put_string([0, 8], "<".fg(Color::BLUE));
+            term.put_string([0, 8], "<".fg(player_colors.get_color(0)));
         }
         if keyboard_input.just_pressed(KeyCode::D) {
             game_build_settings.increase_enemy_count();
-            term.put_string([8, 8], ">".fg(Color::BLUE));
+            term.put_string([8, 8], ">".fg(player_colors.get_color(0)));
+        }
+    }
+
+    if menu_nav.0 == 3 {
+        if keyboard_input.just_pressed(KeyCode::A) {
+            player_colors.prev_palette();
+            term.put_string([0, 5], "<".fg(player_colors.get_color(0)));
+        }
+        if keyboard_input.just_pressed(KeyCode::D) {
+            player_colors.next_palette();
+            term.put_string([6, 5], ">".fg(player_colors.get_color(0)));
         }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    if menu_nav.0 == 3 && keyboard_input.just_pressed(KeyCode::Space)
+    if menu_nav.0 == 4 && keyboard_input.just_pressed(KeyCode::Space)
         || keyboard_input.just_pressed(KeyCode::Insert)
     {
         exit.send(AppExit);

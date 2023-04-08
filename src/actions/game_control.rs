@@ -158,8 +158,8 @@ pub fn place_building(
                                     },
                                 },
                                 BuildingCooldown {
-                                    timer: Timer::from_seconds(0.15, TimerMode::Once),
-                                    timer_reset: 0.15,
+                                    timer: Timer::from_seconds(0.13, TimerMode::Once),
+                                    timer_reset: 0.13,
                                 },
                                 BuildingMarker::default(),
                             ),
@@ -202,8 +202,8 @@ pub fn place_building(
                                     building_type: Line { strength: 8 },
                                 },
                                 BuildingCooldown {
-                                    timer: Timer::from_seconds(0.12, TimerMode::Once),
-                                    timer_reset: 0.12,
+                                    timer: Timer::from_seconds(0.15, TimerMode::Once),
+                                    timer_reset: 0.15,
                                 },
                                 BuildingMarker::default(),
                             ),
