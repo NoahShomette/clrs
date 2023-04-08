@@ -1,4 +1,4 @@
-use crate::color_system::{TileColor, TileColorStrength};
+use crate::color_system::{increase_building_points, TileColor, TileColorStrength};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy::window::PrimaryWindow;
@@ -46,13 +46,12 @@ pub fn update_player_points(
         }
 
         for (entity, mut player_points, player_id) in player_query.iter_mut() {
-            let points = *player_points_hashmap.entry(player_id.id()).or_insert(0) / 4;
-            player_points.building_points = player_points.building_points.saturating_add(points);
-            commands
-                .entity(entity)
-                .insert(bevy_ggf::game_core::state::Changed::default());
+            let points = *player_points_hashmap.entry(player_id.id()).or_insert(0) / 16;
+            for _ in 0..points {
+                increase_building_points(entity, &mut player_points, &mut commands);
+            }
         }
-        points_timer.set_duration(Duration::from_secs_f32(4.0));
+        points_timer.set_duration(Duration::from_secs_f32(1.0));
         points_timer.reset();
     }
 }

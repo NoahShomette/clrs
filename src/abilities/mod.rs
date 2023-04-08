@@ -1,5 +1,6 @@
 ﻿pub mod expand;
 pub mod nuke;
+pub mod fortify;
 
 use crate::buildings::Activate;
 use bevy::prelude::{
@@ -44,7 +45,7 @@ pub struct DestroyAbility;
 pub enum Abilities {
     #[default]
     Nuke,
-    Sacrifice,
+    Fortify,
     Expand,
 }
 

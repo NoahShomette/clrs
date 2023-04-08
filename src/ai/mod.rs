@@ -1,4 +1,5 @@
 use crate::actions::Actions;
+use crate::buildings::BuildingTypes;
 use crate::color_system::ColorConflicts;
 use crate::game::GameData;
 use crate::player::PlayerPoints;
@@ -7,6 +8,7 @@ use bevy_ecs_tilemap::prelude::{TileColor, TilePos, TileStorage};
 use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::player::{Player, PlayerMarker};
+use rand::{thread_rng, Rng};
 
 pub fn run_ai(
     color_conflicts: Res<ColorConflicts>,
@@ -67,6 +69,32 @@ pub fn run_ai(
         }
 
         if let Some(info) = sorted_highest_conflicts.get(0) {
+            let mut rng = thread_rng();
+            match info.1 {
+                0..=1 => {
+                    let chance = rng.gen_bool(0.5);
+                    actions.selected_building = match chance {
+                        true => BuildingTypes::Line,
+                        false => BuildingTypes::Pulser,
+                    }
+                }
+                2..=4 => {
+                    let chance = rng.gen_range(0..=2);
+                    actions.selected_building = match chance {
+                        0 => BuildingTypes::Scatter,
+                        1 => BuildingTypes::Pulser,
+                        _ => BuildingTypes::Line,
+                    }
+                }
+                _ => {
+                    let chance = rng.gen_bool(0.7);
+                    actions.selected_building = match chance {
+                        true => BuildingTypes::Scatter,
+                        false => BuildingTypes::Pulser,
+                    }
+                }
+            }
+
             actions.placed_building = true;
             actions.tile_pos = Some(info.0);
         }

@@ -8,8 +8,9 @@ use bevy::prelude::{
     Commands, Component, Entity, EventWriter, FromReflect, Query, Reflect, With, Without,
 };
 use bevy::utils::hashbrown::HashMap;
-use bevy_ecs_tilemap::prelude::*;
-use bevy_ggf::mapping::terrain::TileTerrainInfo;
+use bevy_ecs_tilemap::prelude::{TilePos, TileStorage, TilemapSize};
+use bevy_ggf::game_core::state::Changed;
+use bevy_ggf::mapping::terrain::{TerrainClass, TerrainType, TileTerrainInfo};
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{ObjectGridPosition, ObjectId};
@@ -40,7 +41,7 @@ pub fn simulate_nukes(
     mut tiles: Query<
         (
             Entity,
-            &TileTerrainInfo,
+            &mut TileTerrainInfo,
             Option<(&mut PlayerMarker, &mut TileColor)>,
         ),
         (With<Tile>, Without<Ability<Nuke>>, Without<MapId>),
@@ -66,11 +67,11 @@ pub fn simulate_nukes(
                 cost: Some(0),
             },
         );
-
         event_writer.send(ColorConflictGuarantees {
             tile_pos: object_grid_position.tile_position,
             casting_player: player_marker.id(),
             affect_casting_player: true,
+            affect_neutral: true,
             affect_other_players: true,
             conflict_type: ConflictType::Damage,
         });
@@ -128,7 +129,7 @@ pub fn simulate_nukes(
                 let Some(tile_entity) = tile_storage.get(&neighbor.0) else {
                     continue;
                 };
-                if let Ok((entity, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
+                if let Ok((entity, mut tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
                     let mut rng = thread_rng();
                     let rndm = rng.gen_range(
                         nuke.ability_type.min_tile_damage..nuke.ability_type.max_tile_damage,
@@ -139,9 +140,10 @@ pub fn simulate_nukes(
                             &player_marker.id(),
                             true,
                             true,
+                            true,
                             ConflictType::Damage,
                             neighbor.0,
-                            tile_terrain_info,
+                            &tile_terrain_info,
                             &options,
                             &mut event_writer,
                         );
@@ -152,7 +154,6 @@ pub fn simulate_nukes(
                     "Is safe because we know we add the node in at the beginning of this loop",
                 ));
             }
-
             unvisited_tiles.remove(0);
             visited_nodes.push(current_node.tile_pos);
         }

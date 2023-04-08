@@ -10,12 +10,10 @@ use bevy::prelude::{Color, Query, Res, State, Without};
 use bevy::utils::HashMap;
 use bevy_ascii_terminal::{ColorFormatter, StringFormatter, Terminal, TileFormatter};
 use bevy_ecs_tilemap::prelude::TilePos;
-use bevy_ggf::game_core::Game;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectInfo, ObjectType};
 use bevy_ggf::player::{Player, PlayerMarker};
-use std::process::id;
 
 pub fn draw_game_over(
     mut term_query: Query<&mut Terminal>,
@@ -149,7 +147,7 @@ pub fn draw_game(
             term.put_string([0, 12], "Abilities".fg(Color::WHITE));
             term.put_string([1, 14], "v".fg(Color::WHITE));
             term.put_string([1, 15], "N".fg(Color::WHITE));
-            term.put_string([1, 17], "S".fg(Color::WHITE));
+            term.put_string([1, 17], "F".fg(Color::WHITE));
             term.put_string([1, 19], "E".fg(Color::WHITE));
             term.put_string([1, 20], "^".fg(Color::WHITE));
             
@@ -157,8 +155,8 @@ pub fn draw_game(
                 Abilities::Nuke => {
                     term.put_string([1, 15], "N".fg(Color::BLUE));
                 }
-                Abilities::Sacrifice => {
-                    term.put_string([1, 17], "S".fg(Color::BLUE));
+                Abilities::Fortify => {
+                    term.put_string([1, 17], "F".fg(Color::BLUE));
                 }
                 Abilities::Expand => {
                     term.put_string([1, 19], "E".fg(Color::BLUE));
@@ -388,13 +386,13 @@ pub fn draw_game(
                     'N'.fg(Color::GRAY),
                 );
             }
-            "Sacrifice" => {
+            "Fortify" => {
                 term.put_char(
                     [
                         object_pos.tile_position.x + BORDER_PADDING_TOTAL / 2,
                         object_pos.tile_position.y + BORDER_PADDING_TOTAL / 2,
                     ],
-                    'S'.fg(Color::GRAY),
+                    'F'.fg(Color::GRAY),
                 );
             }
             "Expand" => {

@@ -38,11 +38,11 @@ ns_defaults = {git = "https://github.com/NoahShomette/ns_defaults.git"}
 bevy_ecs_tilemap = "0.10.0"
 bevy_ascii_terminal = "0.12.4"
 leafwing-input-manager = "0.9.1"
+num = "0.4.0"
 
 # keep the following in sync with Bevy's dependencies
 winit = { version = "0.28", default-features = false }
 image = { version = "0.24", default-features = false }
-num = "0.4.0"
 
 [build-dependencies]
 embed-resource = "1.4"

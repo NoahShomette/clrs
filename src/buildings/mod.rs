@@ -11,6 +11,7 @@ use bevy::utils::hashbrown::HashMap;
 use bevy_ecs_tilemap::prelude::{TileStorage, TilemapSize};
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
+use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId, ObjectInfo};
@@ -27,7 +28,7 @@ pub fn destroy_buildings(
         ),
         With<Object>,
     >,
-    mut tiles: Query<(Entity, &PlayerMarker), (Without<Object>, With<Tile>)>,
+    mut tiles: Query<(Entity, &TileTerrainInfo, &PlayerMarker), (Without<Object>, With<Tile>)>,
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut commands: Commands,
     mut despawn_objects: ResMut<DespawnedObjects>,
@@ -41,11 +42,13 @@ pub fn destroy_buildings(
 
         let tile_entity = tile_storage.get(&object_grid_pos.tile_position).unwrap();
 
-        let Ok((entity, tile_marker)) = tiles.get_mut(tile_entity) else {
+        let Ok((entity, tile_terrain_info, tile_marker)) = tiles.get_mut(tile_entity) else {
             continue;
         };
 
-        if player_marker != tile_marker {
+        if player_marker != tile_marker
+            && tile_terrain_info.terrain_type.terrain_class.name.as_str() == "NonColorable"
+        {
             println!("killing buildings");
             despawn_objects
                 .despawned_objects

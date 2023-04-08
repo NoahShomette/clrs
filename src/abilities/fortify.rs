@@ -17,21 +17,21 @@ use bevy_ggf::player::PlayerMarker;
 use rand::{thread_rng, Rng};
 
 #[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
-pub struct Expand {
+pub struct Fortify {
     pub strength: u32,
     pub min_tile_strengthen: u32,
     pub max_tile_strengthen: u32,
 }
 // two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
 // are not the same player then we damage their color by one. Otherwise at that point we stop.
-pub fn simulate_expands(
+pub fn simulate_fortifies(
     mut tile_storage_query: Query<(Entity, &MapId, &TileStorage, &TilemapSize)>,
     pulsers: Query<
         (
             Entity,
             &ObjectId,
             &PlayerMarker,
-            &Ability<Expand>,
+            &Ability<Fortify>,
             &AbilityCooldown,
             &ObjectGridPosition,
         ),
@@ -43,7 +43,7 @@ pub fn simulate_expands(
             &TileTerrainInfo,
             Option<(&mut PlayerMarker, &mut TileColor)>,
         ),
-        (With<Tile>, Without<Ability<Expand>>, Without<MapId>),
+        (With<Tile>, Without<Ability<Fortify>>, Without<MapId>),
     >,
     mut event_writer: EventWriter<ColorConflictGuarantees>,
     mut commands: Commands,
@@ -54,7 +54,7 @@ pub fn simulate_expands(
         return;
     };
 
-    for (entity, id, player_marker, expand, ability_cooldown, object_grid_position) in
+    for (entity, id, player_marker, fortify, ability_cooldown, object_grid_position) in
         pulsers.iter()
     {
         let mut tiles_info: HashMap<TilePos, TileNode> = HashMap::new();
@@ -72,18 +72,18 @@ pub fn simulate_expands(
             tile_pos: object_grid_position.tile_position,
             casting_player: player_marker.id(),
             affect_casting_player: true,
-            affect_neutral: true,
-            affect_other_players: true,
-            conflict_type: ConflictType::Natural,
+            affect_neutral: false,
+            affect_other_players: false,
+            conflict_type: ConflictType::Stengthen,
         });
 
         event_writer.send(ColorConflictGuarantees {
             tile_pos: object_grid_position.tile_position,
             casting_player: player_marker.id(),
             affect_casting_player: true,
-            affect_neutral: true,
-            affect_other_players: true,
-            conflict_type: ConflictType::Natural,
+            affect_neutral: false,
+            affect_other_players: false,
+            conflict_type: ConflictType::Stengthen,
         });
 
         // unvisited nodes
@@ -128,7 +128,7 @@ pub fn simulate_expands(
                 }
 
                 if !tile_cost_check(
-                    expand.ability_type.strength,
+                    fortify.ability_type.strength,
                     &neighbor.0,
                     &current_node.tile_pos,
                     &mut tiles_info,
@@ -143,8 +143,8 @@ pub fn simulate_expands(
                 if let Ok((entity, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
                     let mut rng = thread_rng();
                     let rndm = rng.gen_range(
-                        expand.ability_type.min_tile_strengthen
-                            ..expand.ability_type.max_tile_strengthen,
+                        fortify.ability_type.min_tile_strengthen
+                            ..fortify.ability_type.max_tile_strengthen,
                     );
 
                     let mut is_player_tile = false;
@@ -152,9 +152,9 @@ pub fn simulate_expands(
                         is_player_tile = register_guaranteed_color_conflict(
                             &player_marker.id(),
                             true,
-                            true,
-                            true,
-                            ConflictType::Natural,
+                            false,
+                            false,
+                            ConflictType::Stengthen,
                             neighbor.0,
                             tile_terrain_info,
                             &options,
@@ -163,8 +163,8 @@ pub fn simulate_expands(
                     }
                     if is_player_tile {
                         unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
-                        "Is safe because we know we add the node in at the beginning of this loop",
-                    ));
+                            "Is safe because we know we add the node in at the beginning of this loop",
+                        ));
                     }
                 }
             }

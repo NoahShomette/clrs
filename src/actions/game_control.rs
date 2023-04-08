@@ -1,3 +1,4 @@
+use crate::abilities::expand::Expand;
 use crate::abilities::nuke::Nuke;
 use crate::abilities::{Abilities, Ability, AbilityCooldown, AbilityMarker};
 use crate::actions::Actions;
@@ -20,7 +21,7 @@ use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectInfo};
 use bevy_ggf::player::{Player, PlayerMarker};
 use ns_defaults::camera::CursorWorldPos;
-use crate::abilities::expand::Expand;
+use crate::abilities::fortify::Fortify;
 
 pub fn place_building(
     cursor_world_pos: Res<CursorWorldPos>,
@@ -104,12 +105,12 @@ pub fn place_building(
                                 Building {
                                     building_type: Pulser {
                                         strength: 7,
-                                        max_pulse_tiles: 3,
+                                        max_pulse_tiles: 2,
                                     },
                                 },
                                 BuildingCooldown {
-                                    timer: Timer::from_seconds(0.2, TimerMode::Once),
-                                    timer_reset: 0.2,
+                                    timer: Timer::from_seconds(0.1, TimerMode::Once),
+                                    timer_reset: 0.1,
                                 },
                                 BuildingMarker::default(),
                             ),
@@ -149,12 +150,12 @@ pub fn place_building(
                                 Building {
                                     building_type: Scatters {
                                         scatter_range: 3,
-                                        scatter_amount: 30,
+                                        scatter_amount: 20,
                                     },
                                 },
                                 BuildingCooldown {
-                                    timer: Timer::from_seconds(0.2, TimerMode::Once),
-                                    timer_reset: 0.2,
+                                    timer: Timer::from_seconds(0.15, TimerMode::Once),
+                                    timer_reset: 0.15,
                                 },
                                 BuildingMarker::default(),
                             ),
@@ -192,11 +193,11 @@ pub fn place_building(
                                         .clone(),
                                 },
                                 Building {
-                                    building_type: Line { strength: 10 },
+                                    building_type: Line { strength: 8 },
                                 },
                                 BuildingCooldown {
-                                    timer: Timer::from_seconds(0.1, TimerMode::Once),
-                                    timer_reset: 0.1,
+                                    timer: Timer::from_seconds(0.2, TimerMode::Once),
+                                    timer_reset: 0.2,
                                 },
                                 BuildingMarker::default(),
                             ),
@@ -312,14 +313,13 @@ pub fn place_ability(
                             .insert(Changed::default());
                     }
                 }
-                Abilities::Sacrifice => {
-
+                Abilities::Fortify => {
                     let Some((player_marker, _, _)) = tiles
                         .iter()
                         .find(|(_, id, _)| id == &&target_tile_pos)else{
                         continue;
                     };
-                    
+
                     if player_points.ability_points >= 50 && player_marker.id() == player_id {
                         let _ = game_commands.spawn_object(
                             (
@@ -337,21 +337,21 @@ pub fn place_ability(
                                 ObjectInfo {
                                     object_type: game_data
                                         .object_types
-                                        .get("Sacrifice")
+                                        .get("Fortify")
                                         .unwrap()
                                         .clone(),
                                 },
                                 Ability {
-                                    ability_type: Nuke {
-                                        strength: 7,
-                                        min_tile_damage: 3,
-                                        max_tile_damage: 5,
+                                    ability_type: Fortify {
+                                        strength: 5,
+                                        min_tile_strengthen: 3,
+                                        max_tile_strengthen: 5,
                                     },
                                 },
                                 AbilityCooldown {
                                     timer: Timer::from_seconds(0.3, TimerMode::Once),
-                                    timer_reset: 0.2,
-                                    timer_ticks: 1,
+                                    timer_reset: 0.3,
+                                    timer_ticks: 20,
                                 },
                                 AbilityMarker {
                                     requires_player_territory: false,

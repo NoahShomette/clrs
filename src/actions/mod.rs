@@ -147,9 +147,9 @@ pub fn update_actions(
             if keyboard_input.just_pressed(KeyCode::W) || keyboard_input.pressed(KeyCode::Up) {
                 match actions.selected_ability {
                     Abilities::Nuke => {
-                        actions.selected_ability = Abilities::Sacrifice;
+                        actions.selected_ability = Abilities::Fortify;
                     }
-                    Abilities::Sacrifice => {
+                    Abilities::Fortify => {
                         actions.selected_ability = Abilities::Expand;
                     }
                     Abilities::Expand => {}
@@ -159,11 +159,11 @@ pub fn update_actions(
             if keyboard_input.just_pressed(KeyCode::S) || keyboard_input.pressed(KeyCode::Down) {
                 match actions.selected_ability {
                     Abilities::Nuke => {}
-                    Abilities::Sacrifice => {
+                    Abilities::Fortify => {
                         actions.selected_ability = Abilities::Nuke;
                     }
                     Abilities::Expand => {
-                        actions.selected_ability = Abilities::Sacrifice;
+                        actions.selected_ability = Abilities::Fortify;
                     }
                 }
             }

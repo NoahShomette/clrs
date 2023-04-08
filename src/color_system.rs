@@ -1,4 +1,3 @@
-use crate::buildings::Building;
 use crate::player::PlayerPoints;
 use bevy::app::{App, Plugin};
 use bevy::prelude::{
@@ -15,6 +14,7 @@ use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::ObjectId;
 use bevy_ggf::player::{Player, PlayerMarker};
+use rand::{thread_rng, Rng};
 
 pub struct ColorSystemPlugin;
 
@@ -29,6 +29,7 @@ impl Plugin for ColorSystemPlugin {
 pub fn register_guaranteed_color_conflict(
     player: &usize,
     affect_casting_player: bool,
+    affect_neutral: bool,
     affect_other_players: bool,
     conflict_type: ConflictType,
     tile_pos: TilePos,
@@ -48,6 +49,7 @@ pub fn register_guaranteed_color_conflict(
                 tile_pos,
                 casting_player: *player,
                 affect_casting_player,
+                affect_neutral,
                 affect_other_players,
                 conflict_type,
             });
@@ -57,6 +59,7 @@ pub fn register_guaranteed_color_conflict(
                 tile_pos,
                 casting_player: *player,
                 affect_casting_player,
+                affect_neutral,
                 affect_other_players,
                 conflict_type,
             });
@@ -66,6 +69,7 @@ pub fn register_guaranteed_color_conflict(
             tile_pos,
             casting_player: *player,
             affect_casting_player,
+            affect_neutral: true,
             affect_other_players,
             conflict_type,
         });
@@ -131,6 +135,7 @@ pub fn update_color_conflicts(
         color_conflicts.register_conflict_guarantee(
             event.tile_pos,
             event.casting_player,
+            event.affect_neutral,
             event.affect_casting_player,
             event.affect_other_players,
             event.conflict_type,
@@ -206,9 +211,7 @@ pub fn handle_color_conflicts(
                     ));
                     for (entity, mut player_points, player_id) in player_query.iter_mut() {
                         if player_id.id() == highest.0 {
-                            player_points.ability_points =
-                                player_points.ability_points.saturating_add(1);
-                            commands.entity(entity).insert(Changed::default());
+                            increase_ability_points(entity, &mut player_points, &mut commands);
                         }
                     }
                     handle_conflicts = false;
@@ -239,6 +242,52 @@ pub fn handle_color_conflicts(
     color_conflicts.conflicts.clear();
 }
 
+pub fn increase_building_points(
+    player_points_entity: Entity,
+    mut player_points: &mut PlayerPoints,
+    commands: &mut Commands,
+) {
+    if player_points.building_points < 50 {
+        player_points.building_points = player_points.building_points.saturating_add(1);
+        commands
+            .entity(player_points_entity)
+            .insert(Changed::default());
+        return;
+    }
+    let mut rng = thread_rng();
+    let amount_fifty_points: f64 = player_points.building_points as f64 / 50.0;
+    let chance = rng.gen_bool((amount_fifty_points - 0.0) / (4.0 - 0.0));
+    if !chance {
+        player_points.building_points = player_points.building_points.saturating_add(1);
+        commands
+            .entity(player_points_entity)
+            .insert(Changed::default());
+    }
+}
+
+pub fn increase_ability_points(
+    player_points_entity: Entity,
+    mut player_points: &mut PlayerPoints,
+    commands: &mut Commands,
+) {
+    if player_points.ability_points < 50 {
+        player_points.ability_points = player_points.ability_points.saturating_add(1);
+        commands
+            .entity(player_points_entity)
+            .insert(Changed::default());
+        return;
+    }
+    let mut rng = thread_rng();
+    let amount_fifty_points: f64 = player_points.ability_points as f64 / 50.0;
+    let chance = rng.gen_bool((amount_fifty_points - 0.0) / (3.0 - 0.0));
+    if !chance {
+        player_points.ability_points = player_points.ability_points.saturating_add(1);
+        commands
+            .entity(player_points_entity)
+            .insert(Changed::default());
+    }
+}
+
 pub fn handle_color_conflict_guarantees(
     mut color_conflicts: ResMut<ColorConflicts>,
     mut commands: Commands,
@@ -253,7 +302,7 @@ pub fn handle_color_conflict_guarantees(
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
 ) {
     for (tile_pos, conflict_info) in color_conflicts.guaranteed_conflicts.iter() {
-        for (casting_player, affect_casting_player, affect_other_players, conflict_type) in
+        for (casting_player, affect_casting_player, affect_neutral, affect_other_players, conflict_type) in
             conflict_info.iter()
         {
             let Some((_, tile_storage)) = tile_storage_query
@@ -270,7 +319,7 @@ pub fn handle_color_conflict_guarantees(
 
             match options {
                 None => {
-                    if *affect_other_players && ConflictType::Damage != *conflict_type {
+                    if *affect_neutral && ConflictType::Damage != *conflict_type {
                         commands.entity(entity).insert((
                             TileColor {
                                 tile_color_strength: TileColorStrength::One,
@@ -345,6 +394,7 @@ pub struct ColorConflictGuarantees {
     pub tile_pos: TilePos,
     pub casting_player: usize,
     pub affect_casting_player: bool,
+    pub affect_neutral: bool,
     pub affect_other_players: bool,
     pub conflict_type: ConflictType,
 }
@@ -360,7 +410,7 @@ pub enum ConflictType {
 #[derive(Default, Clone, Eq, Debug, PartialEq, Resource, Reflect, FromReflect)]
 pub struct ColorConflicts {
     pub conflicts: HashMap<TilePos, Vec<(usize, usize)>>,
-    pub guaranteed_conflicts: HashMap<TilePos, Vec<(usize, bool, bool, ConflictType)>>,
+    pub guaranteed_conflicts: HashMap<TilePos, Vec<(usize, bool, bool, bool, ConflictType)>>,
 }
 
 impl ColorConflicts {
@@ -377,6 +427,7 @@ impl ColorConflicts {
         tile_pos: TilePos,
         casting_player: usize,
         affect_casting_player: bool,
+        affect_neutral: bool,
         affect_other_players: bool,
         conflict_type: ConflictType,
     ) {
@@ -384,6 +435,7 @@ impl ColorConflicts {
             conflicts.push((
                 casting_player,
                 affect_casting_player,
+                affect_neutral,
                 affect_other_players,
                 conflict_type,
             ));
@@ -393,6 +445,7 @@ impl ColorConflicts {
                 vec![(
                     casting_player,
                     affect_casting_player,
+                    affect_neutral,
                     affect_other_players,
                     conflict_type,
                 )],

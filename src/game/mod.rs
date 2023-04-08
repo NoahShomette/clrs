@@ -41,6 +41,7 @@ use bevy_ggf::object::{
 };
 use bevy_ggf::player::{Player, PlayerMarker};
 use crate::abilities::expand::simulate_expands;
+use crate::abilities::fortify::simulate_fortifies;
 
 pub struct GameCorePlugin;
 impl Plugin for GameCorePlugin {
@@ -230,8 +231,8 @@ pub fn start_game(world: &mut World) {
         name: String::from("Nuke"),
         object_group: object_group_colorers.clone(),
     };
-    let object_type_sacrifice: ObjectType = ObjectType {
-        name: String::from("Sacrifice"),
+    let object_type_fortify: ObjectType = ObjectType {
+        name: String::from("Fortify"),
         object_group: object_group_colorers.clone(),
     };
     let object_type_expand: ObjectType = ObjectType {
@@ -262,8 +263,8 @@ pub fn start_game(world: &mut World) {
         .object_types
         .insert(object_type_nuke.name.clone(), object_type_nuke.clone());
     game_data.object_types.insert(
-        object_type_sacrifice.name.clone(),
-        object_type_sacrifice.clone(),
+        object_type_fortify.name.clone(),
+        object_type_fortify.clone(),
     );
     game_data
         .object_types
@@ -414,6 +415,7 @@ pub fn setup_game(
             simulate_scatterers,
             simulate_nukes,
             simulate_expands,
+            simulate_fortifies,
         )
             .chain()
             .in_base_set(GameSets::Core),
