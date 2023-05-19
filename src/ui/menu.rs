@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy_ascii_terminal::{
     AutoCamera, Border, ColorFormatter, StringFormatter, Terminal, TerminalBundle, ToWorld,
 };
+use crate::ui::MenuNavigation;
 
 pub struct MenuPlugin;
 
@@ -14,12 +15,11 @@ pub struct MenuPlugin;
 /// The menu is only drawn during the State `GameState::Menu` and is removed when that state is exited
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(setup_menu.in_schedule(OnEnter(GameState::Menu)))
-            .add_system(handle_menu.in_set(OnUpdate(GameState::Menu)));
+        
     }
 }
 
-fn setup_menu(mut commands: Commands, mut term_query: Query<&mut Terminal>) {
+pub fn setup_menu(mut commands: Commands, mut term_query: Query<&mut Terminal>) {
     if let Ok(mut term) = term_query.get_single_mut() {
         term.resize([30, 30]);
     } else {
@@ -30,10 +30,7 @@ fn setup_menu(mut commands: Commands, mut term_query: Query<&mut Terminal>) {
     }
 }
 
-#[derive(Default)]
-pub struct MenuNavigation(pub u32);
-
-fn handle_menu(
+pub fn handle_menu(
     mut next_state: ResMut<NextState<GameState>>,
     mut game_build_settings: ResMut<GameBuildSettings>,
     mut menu_nav: Local<MenuNavigation>,

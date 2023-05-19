@@ -12,10 +12,9 @@ use ns_defaults::camera::CursorWorldPos;
 
 use crate::buildings::BuildingTypes;
 use crate::color_system::PlayerColors;
-use crate::game::draw::draw_game;
 use crate::game::{simulate_game, GameBuildSettings, GameData, BORDER_PADDING_TOTAL};
-use crate::menu::MenuNavigation;
 use crate::GameState;
+use crate::ui::MenuNavigation;
 
 mod game_control;
 

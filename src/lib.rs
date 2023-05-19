@@ -4,29 +4,29 @@ mod ai;
 mod audio;
 mod buildings;
 mod color_system;
+mod draw;
 mod game;
-mod loading;
-mod menu;
-mod player;
 mod level_loader;
+mod loading;
 mod mapping;
+mod player;
+mod ui;
 
 use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
 use crate::loading::LoadingPlugin;
-use crate::menu::MenuPlugin;
 use crate::player::PlayerPlugin;
 
 use crate::color_system::ColorSystemPlugin;
+use crate::draw::DrawPlugin;
 use crate::game::GameCorePlugin;
+use crate::ui::UiPlugin;
 use bevy::app::App;
 #[cfg(debug_assertions)]
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ggf::BggfDefaultPlugins;
-use ns_defaults::camera::CameraPlugin;
-use crate::level_loader::LevelHandle;
 
 // This example game uses States to separate logic
 // See https://bevy-cheatbook.github.io/programming/states.html
@@ -57,7 +57,8 @@ impl Plugin for GamePlugin {
         app.add_state::<GameState>()
             .add_plugin(ColorSystemPlugin)
             .add_plugin(LoadingPlugin)
-            .add_plugin(MenuPlugin)
+            .add_plugin(UiPlugin)
+            .add_plugin(DrawPlugin)
             .add_plugin(ActionsPlugin)
             .add_plugin(InternalAudioPlugin)
             .add_plugin(PlayerPlugin)

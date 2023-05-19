@@ -41,6 +41,7 @@ leafwing-input-manager = "0.9.1"
 num = "0.4.0"
 serde = "1.0.160"
 bevy_common_assets = { version = "0.6.0", features = ["ron", "serde_ron", "json", "serde_json"] }
+bevy_vector_shapes = "0.4.4"
 
 # keep the following in sync with Bevy's dependencies
 winit = { version = "0.28", default-features = false }

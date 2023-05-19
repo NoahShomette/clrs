@@ -1,5 +1,4 @@
-pub mod draw;
-mod end_game;
+pub mod end_game;
 mod state;
 
 use crate::abilities::expand::simulate_expands;
@@ -18,7 +17,6 @@ use crate::color_system::{
     handle_color_conflict_guarantees, handle_color_conflicts, update_color_conflicts,
     ColorConflictEvent, ColorConflictGuarantees, ColorConflicts, PlayerTileChangedCount, TileColor,
 };
-use crate::game::draw::{draw_game, draw_game_over};
 use crate::game::end_game::{check_game_ended, update_game_end_state};
 use crate::game::state::update_game_state;
 use crate::level_loader::{LevelHandle, Levels};
@@ -54,16 +52,6 @@ impl Plugin for GameCorePlugin {
 
         app.add_system(check_game_ended.in_set(OnUpdate(GameState::Playing)));
         app.add_system(check_game_ended.in_set(OnUpdate(GameState::Paused)));
-
-        app.add_system(draw_game.in_set(OnUpdate(GameState::Playing)));
-        app.add_system(
-            draw_game
-                .before(paused_controls)
-                .in_set(OnUpdate(GameState::Paused)),
-        );
-        app.add_system(draw_game.in_set(OnUpdate(GameState::Ended)));
-
-        app.add_system(draw_game_over.in_set(OnUpdate(GameState::Ended)));
 
         app.add_system(
             simulate_game

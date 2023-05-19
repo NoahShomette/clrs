@@ -14,7 +14,6 @@ use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectInfo, ObjectType};
 use bevy_ggf::player::{Player, PlayerMarker};
-use std::process::id;
 
 pub fn draw_game_over(
     mut term_query: Query<&mut Terminal>,
