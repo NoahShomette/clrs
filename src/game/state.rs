@@ -11,7 +11,7 @@ use crate::draw::{DrawObject, DrawTile};
 pub fn update_game_state(world: &mut World) {
     world.resource_scope(|mut world, mut game: Mut<Game>| {
         let game_state = game.get_state_diff(0);
-        //println!("{:?}", game_state);
+
         let registration = game.type_registry.read();
 
         let tiles: Vec<TileState> = game_state.tiles.into_iter().collect();

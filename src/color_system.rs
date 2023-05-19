@@ -512,6 +512,16 @@ pub struct TileColor {
 }
 
 impl TileColor {
+    pub fn get_normalized_number_representation(&self) -> f32 {
+        match self.tile_color_strength {
+            TileColorStrength::Neutral => 0.0,
+            TileColorStrength::One => 0.2,
+            TileColorStrength::Two => 0.4,
+            TileColorStrength::Three => 0.6,
+            TileColorStrength::Four => 0.8,
+            TileColorStrength::Five => 1.0,
+        }
+    }
     pub fn get_number_representation(&self) -> u32 {
         match self.tile_color_strength {
             TileColorStrength::Neutral => 0,
@@ -593,7 +603,7 @@ impl Default for PlayerColors {
                     String::from("45344a"),
                 ],
                 noncolorable_tile: "272135".to_string(),
-                colorable_tile: "272135".to_string(),
+                colorable_tile: "ffffff".to_string(),
             },
             palettes: vec![
                 Palette {

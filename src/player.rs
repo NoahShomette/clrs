@@ -22,8 +22,7 @@ pub struct PlayerPoints {
 /// Player logic is only active during the State `GameState::Playing`
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CursorWorldPos>()
-            .add_system(update_cursor_world_pos);
+        
     }
 }
 
@@ -56,6 +55,8 @@ pub fn update_player_points(
     }
 }
 
+/// We added the ns_default camera setup which handles this. Leaving this in case we want to remove
+/// camera movement. We would need to reinsert CursorWorldPos though
 fn update_cursor_world_pos(
     mut query: Query<(&GlobalTransform, &Camera)>,
     mut cursor_world_pos: ResMut<CursorWorldPos>,
@@ -75,6 +76,6 @@ fn update_cursor_world_pos(
             .viewport_to_world(global_transform, current_cursor_position) else{
             return;
         };
-        cursor_world_pos.cursor_world_pos = current_cursor_position;
+        cursor_world_pos.cursor_world_pos = ray.origin.truncate();
     }
 }

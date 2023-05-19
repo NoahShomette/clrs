@@ -5,9 +5,9 @@ use bevy::prelude::*;
 use bevy::window::{PrimaryWindow, WindowMode};
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
-use bevy_ascii_terminal::TerminalPlugin;
 use clrs::GamePlugin;
 use std::io::Cursor;
+use bevy_vector_shapes::Shape2dPlugin;
 use winit::window::Icon;
 
 fn main() {
@@ -25,7 +25,8 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugin(TerminalPlugin)
+        .add_plugin(ns_defaults::camera::CameraPlugin)
+        .add_plugin(Shape2dPlugin::default())
         .add_plugin(GamePlugin)
         .add_system(set_window_icon.on_startup())
         .run();

@@ -2,19 +2,152 @@ use crate::abilities::Abilities;
 use crate::actions::Actions;
 use crate::buildings::BuildingTypes;
 use crate::color_system::{PlayerColors, TileColor, TileColorStrength};
+use crate::draw::{DrawObject, DrawTile};
 use crate::game::end_game::GameEnded;
 use crate::game::{GameData, BORDER_PADDING_TOTAL};
+use crate::loading::FontAssets;
 use crate::player::PlayerPoints;
 use crate::GameState;
-use bevy::prelude::{Color, Query, Res, State, Without};
+use bevy::prelude::*;
 use bevy::utils::HashMap;
-use bevy_ascii_terminal::{ColorFormatter, StringFormatter, Terminal, TileFormatter};
 use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectInfo, ObjectType};
 use bevy_ggf::player::{Player, PlayerMarker};
+use bevy_vector_shapes::prelude::{DiscBundle, RectangleBundle, ShapeConfig, ThicknessType};
+use bevy_vector_shapes::render::ShapePipelineType;
 
+pub const TILE_SIZE: f32 = 32.0;
+pub const TILE_GAP: f32 = 2.0;
+pub const TILE_OUTLINE: f32 = 2.0;
+
+pub const OBJECT_SIZE: f32 = 24.0;
+
+pub fn draw_tiles(
+    game_info: Res<GameData>,
+    tile_query: Query<(
+        Entity,
+        &DrawTile,
+        &TileTerrainInfo,
+        &TilePos,
+        Option<(&TileColor, &PlayerMarker)>,
+    )>,
+    font_handle: Res<FontAssets>,
+    player_colors: Res<PlayerColors>,
+    mut commands: Commands,
+) {
+    for (entity, _, tile_terrain_info, tile_pos, options) in tile_query.iter() {
+        let card_x = (tile_pos.x as f32 * (TILE_SIZE + TILE_GAP))
+            - ((game_info.map_size_x as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
+        let card_y = (tile_pos.y as f32 * (TILE_SIZE + TILE_GAP))
+            - ((game_info.map_size_y as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
+
+        commands.spawn(bevy_vector_shapes::shapes::ShapeBundle::rect(
+            &ShapeConfig {
+                transform: Transform {
+                    translation: Vec3 {
+                        x: card_x,
+                        y: card_y,
+                        z: 1.0,
+                    },
+                    rotation: Default::default(),
+                    scale: Vec3 {
+                        x: 1.0,
+                        y: 1.0,
+                        z: 1.0,
+                    },
+                },
+                color: match options {
+                    None => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
+                        "NonColorable" => player_colors.get_noncolorable(),
+                        _ => player_colors.get_colorable(),
+                    },
+                    Some((tile_color, player_marker)) => player_colors
+                        .get_color(player_marker.id())
+                        .with_a(tile_color.get_normalized_number_representation()),
+                },
+                hollow: false,
+                cap: Default::default(),
+                thickness: TILE_OUTLINE,
+                thickness_type: ThicknessType::World,
+                corner_radii: Default::default(),
+                render_layers: None,
+                alpha_mode: Default::default(),
+                disable_laa: false,
+                instance_id: 0,
+                canvas: None,
+                texture: None,
+                alignment: Default::default(),
+                roundness: 0.0,
+                pipeline: ShapePipelineType::Shape2d,
+            },
+            Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
+            },
+        ));
+
+        commands.entity(entity).remove::<DrawTile>();
+    }
+}
+
+pub fn draw_objects(
+    game_info: Res<GameData>,
+    tile_query: Query<(Entity, &DrawObject, &ObjectInfo, &ObjectGridPosition)>,
+    font_handle: Res<FontAssets>,
+    mut commands: Commands,
+) {
+    for (entity, _, object_info, tile_pos) in tile_query.iter() {
+        let card_x = (tile_pos.tile_position.x as f32 * (TILE_SIZE + TILE_GAP))
+            - ((game_info.map_size_x as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
+        let card_y = (tile_pos.tile_position.y as f32 * (TILE_SIZE + TILE_GAP))
+            - ((game_info.map_size_y as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
+
+        let mut spawn_point: Vec3 = Vec3 {
+            x: card_x,
+            y: card_y,
+            z: 3.0,
+        };
+
+        commands.spawn(bevy_vector_shapes::shapes::ShapeBundle::rect(
+            &ShapeConfig {
+                transform: Transform {
+                    translation: spawn_point,
+                    rotation: Default::default(),
+                    scale: Vec3 {
+                        x: 1.0,
+                        y: 1.0,
+                        z: 1.0,
+                    },
+                },
+                color: Color::BLUE,
+                thickness: 0.0,
+                thickness_type: Default::default(),
+                alignment: Default::default(),
+                hollow: false,
+                cap: Default::default(),
+                roundness: 0.0,
+                corner_radii: Vec4::new(4.0, 4.0, 4.0, 4.0),
+                render_layers: None,
+                alpha_mode: Default::default(),
+                disable_laa: false,
+                instance_id: 0,
+                canvas: None,
+                texture: None,
+                pipeline: ShapePipelineType::Shape2d,
+            },
+            Vec2 {
+                x: OBJECT_SIZE,
+                y: OBJECT_SIZE,
+            },
+        ));
+
+        commands.entity(entity).remove::<DrawObject>();
+    }
+}
+
+/*
 pub fn draw_game_over(
     mut term_query: Query<&mut Terminal>,
     game_ended: Res<GameEnded>,
@@ -402,3 +535,5 @@ pub fn draw_game(
         }
     }
 }
+
+ */

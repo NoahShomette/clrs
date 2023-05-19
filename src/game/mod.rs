@@ -26,7 +26,6 @@ use crate::GameState;
 use bevy::app::App;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
-use bevy_ascii_terminal::Terminal;
 use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize, TilemapTileSize, TilemapType};
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::runner::GameRunner;
@@ -478,12 +477,6 @@ pub fn start_game(world: &mut World) {
         game_data,
         game_build_settings,
     );
-
-    let mut term: Mut<Terminal> = world.query::<&mut Terminal>().single_mut(world);
-    term.resize([
-        map_size.x + BORDER_PADDING_TOTAL,
-        map_size.y + BORDER_PADDING_TOTAL,
-    ]);
 }
 
 #[derive(Default)]

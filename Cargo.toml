@@ -36,7 +36,6 @@ rand = "0.8.3"
 bevy_ggf = { git = "https://github.com/NoahShomette/bevy_ggf.git", branch = "dev" }
 ns_defaults = { git = "https://github.com/NoahShomette/ns_defaults.git" }
 bevy_ecs_tilemap = "0.10.0"
-bevy_ascii_terminal = "0.12.4"
 leafwing-input-manager = "0.9.1"
 num = "0.4.0"
 serde = "1.0.160"

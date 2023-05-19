@@ -2,7 +2,6 @@ use crate::abilities::Abilities;
 use crate::actions::game_control::{place_ability, place_building};
 use bevy::prelude::KeyCode::Pause;
 use bevy::prelude::*;
-use bevy_ascii_terminal::{StringFormatter, Terminal};
 use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::game_core::Game;
 use bevy_ggf::mapping::tiles::Tile;
@@ -93,7 +92,6 @@ fn handle_pause(
 pub fn paused_controls(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
-    mut term_query: Query<&mut Terminal>,
     game: Res<GameData>,
     mut menu_nav: Local<MenuNavigation>,
     mut next_state: ResMut<NextState<GameState>>,
@@ -103,6 +101,7 @@ pub fn paused_controls(
     player_marker: Query<Entity, With<PlayerMarker>>,
     player_colors: Res<PlayerColors>,
 ) {
+    /*
     let mut term = term_query.single_mut();
     let term_size = term.size();
 
@@ -124,6 +123,8 @@ pub fn paused_controls(
     if menu_nav.0 == 1 {
         term.put_string([0, term_size.y - 5], "MENU".fg(player_colors.get_color(0)));
     }
+    
+     */
 
     if keyboard_input.just_pressed(KeyCode::Escape) {
         commands.insert_resource(UnPauseGame);
