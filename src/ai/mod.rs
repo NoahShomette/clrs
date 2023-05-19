@@ -56,7 +56,7 @@ pub fn run_ai_building(
             continue;
         }
 
-        let mut low_health_tile_pos = (TilePos::default(), 0usize);
+        let mut low_health_tile_pos: Option<(TilePos, usize)> = None;
 
         let mut sorted_highest_conflicts: Vec<(TilePos, usize)> = vec![];
         for (tile_pos, player_id_vec) in color_conflicts.conflicts.iter().filter(|value| {
@@ -73,9 +73,14 @@ pub fn run_ai_building(
 
             if let Some((player_marker, tile_color)) = options {
                 if player_marker.id() == player.id() {
-                    if tile_color.get_number_representation() < low_health_tile_pos.1 as u32 {
-                        low_health_tile_pos.1 = tile_color.get_number_representation() as usize;
-                        low_health_tile_pos.0 = *tile_pos;
+                    if low_health_tile_pos.is_none() {
+                        low_health_tile_pos = Some((*tile_pos,tile_color.get_number_representation() as usize));
+                    }else{
+                        let mut low_health_tile_pos = low_health_tile_pos.unwrap();
+                        if tile_color.get_number_representation() < low_health_tile_pos.1 as u32 {
+                            low_health_tile_pos.1 = tile_color.get_number_representation() as usize;
+                            low_health_tile_pos.0 = *tile_pos;
+                        }
                     }
                     return true;
                 }
@@ -97,39 +102,43 @@ pub fn run_ai_building(
             sorted_highest_conflicts.sort_by(|a, b| a.1.cmp(&b.1));
         }
 
-        let info = match sorted_highest_conflicts.get(0) {
-            None => low_health_tile_pos,
-            Some(info) => *info,
+        let info: Option<(TilePos, usize)> = match sorted_highest_conflicts.get(0) {
+            None => match low_health_tile_pos {
+                None => None,
+                Some(tile_pos) => Some(tile_pos),
+            },
+            Some(info) => Some(*info),
         };
         let mut rng = thread_rng();
-        match info.1 {
-            0..=0 => {
-                let chance = rng.gen_bool(0.5);
-                actions.selected_building = match chance {
-                    true => BuildingTypes::Line,
-                    false => BuildingTypes::Pulser,
+        if info.is_some() {
+            match info.unwrap().1 {
+                0..=0 => {
+                    let chance = rng.gen_bool(0.5);
+                    actions.selected_building = match chance {
+                        true => BuildingTypes::Line,
+                        false => BuildingTypes::Pulser,
+                    }
+                }
+                1..=1 => {
+                    let chance = rng.gen_range(0..=2);
+                    actions.selected_building = match chance {
+                        0 => BuildingTypes::Scatter,
+                        1 => BuildingTypes::Line,
+                        _ => BuildingTypes::Pulser,
+                    }
+                }
+                _ => {
+                    let chance = rng.gen_bool(0.6);
+                    actions.selected_building = match chance {
+                        true => BuildingTypes::Scatter,
+                        false => BuildingTypes::Pulser,
+                    }
                 }
             }
-            1..=1 => {
-                let chance = rng.gen_range(0..=2);
-                actions.selected_building = match chance {
-                    0 => BuildingTypes::Scatter,
-                    1 => BuildingTypes::Line,
-                    _ => BuildingTypes::Pulser,
-                }
-            }
-            _ => {
-                let chance = rng.gen_bool(0.6);
-                actions.selected_building = match chance {
-                    true => BuildingTypes::Scatter,
-                    false => BuildingTypes::Pulser,
-                }
-            }
+            actions.try_place_building = true;
+            actions.building_tile_pos = Some(info.unwrap().0);
+            commands.entity(entity).insert(Changed::default());
         }
-
-        actions.try_place_building = true;
-        actions.building_tile_pos = Some(info.0);
-        commands.entity(entity).insert(Changed::default());
     }
 }
 

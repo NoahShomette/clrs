@@ -2,6 +2,7 @@ use crate::GameState;
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioSource;
+use crate::level_loader::{LevelHandle};
 
 pub struct LoadingPlugin;
 
@@ -15,9 +16,11 @@ impl Plugin for LoadingPlugin {
         )
         .add_collection_to_loading_state::<_, FontAssets>(GameState::Loading)
         .add_collection_to_loading_state::<_, AudioAssets>(GameState::Loading)
-        .add_collection_to_loading_state::<_, TextureAssets>(GameState::Loading);
+            .add_collection_to_loading_state::<_, LevelHandle>(GameState::Loading)
+            .add_collection_to_loading_state::<_, TextureAssets>(GameState::Loading);
     }
 }
+
 
 // the following asset collections will be loaded during the State `GameState::Loading`
 // when done loading, they will be inserted as resources (see <https://github.com/NiklasEi/bevy_asset_loader>)

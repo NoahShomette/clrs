@@ -375,6 +375,8 @@ dependencies = [
  "anyhow",
  "bevy",
  "bevy_asset_loader_derive",
+ "bevy_common_assets 0.5.0",
+ "serde",
 ]
 
 [[package]]
@@ -404,6 +406,31 @@ dependencies = [
  "bevy_utils",
  "parking_lot",
  "rodio",
+]
+
+[[package]]
+name = "bevy_common_assets"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c519e2a6c2a4be9212d13e1881a6ab1c05a26107654b6ce7c8d7237642886dd"
+dependencies = [
+ "anyhow",
+ "bevy",
+ "ron",
+ "serde",
+]
+
+[[package]]
+name = "bevy_common_assets"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "291aeda7599bf12869ff225c3702a8b8810c7e5d40655271d0b38442253ca03d"
+dependencies = [
+ "anyhow",
+ "bevy",
+ "ron",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1242,6 +1269,7 @@ dependencies = [
  "bevy",
  "bevy_ascii_terminal",
  "bevy_asset_loader",
+ "bevy_common_assets 0.6.0",
  "bevy_ecs_tilemap",
  "bevy_ggf 0.1.1 (git+https://github.com/NoahShomette/bevy_ggf.git?branch=dev)",
  "bevy_kira_audio",
@@ -1251,6 +1279,7 @@ dependencies = [
  "ns_defaults",
  "num",
  "rand",
+ "serde",
  "winit",
 ]
 
@@ -3023,18 +3052,18 @@ checksum = "bebd363326d05ec3e2f532ab7660680f3b02130d780c299bca73469d521bc0ed"
 
 [[package]]
 name = "serde"
-version = "1.0.159"
+version = "1.0.160"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c04e8343c3daeec41f58990b9d77068df31209f2af111e059e9fe9646693065"
+checksum = "bb2f3770c8bce3bcda7e149193a069a0f4365bda1fa5cd88e03bca26afc1216c"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.159"
+version = "1.0.160"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c614d17805b093df4b147b51339e7e44bf05ef59fba1e45d83500bcfb4d8585"
+checksum = "291a097c63d8497e00160b166a967a4a79c64f3facdd01cbd7502231688d77df"
 dependencies = [
  "proc-macro2",
  "quote",

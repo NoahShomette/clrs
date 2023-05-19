@@ -1,5 +1,5 @@
 ﻿use crate::abilities::{Ability, AbilityCooldown, DestroyAbility};
-use crate::buildings::{get_neighbors_tilepos, tile_cost_check, Activate, TileNode};
+use crate::buildings::{get_neighbors_tilepos, tile_cost_check, Activate, TileNode, check_is_colorable};
 use crate::color_system::{
     convert_tile, register_guaranteed_color_conflict, ColorConflictEvent, ColorConflictGuarantees,
     ConflictType, TileColor, TileColorStrength,
@@ -141,6 +141,9 @@ pub fn simulate_expands(
                 };
 
                 if let Ok((entity, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
+                    if !check_is_colorable(tile_terrain_info) {
+                        continue;
+                    }
                     let mut rng = thread_rng();
                     let rndm = rng.gen_range(
                         expand.ability_type.min_tile_strengthen

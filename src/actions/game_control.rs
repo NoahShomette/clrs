@@ -1,12 +1,14 @@
 use crate::abilities::expand::Expand;
 use crate::abilities::fortify::Fortify;
 use crate::abilities::nuke::Nuke;
-use crate::abilities::{Abilities, Ability, AbilityCooldown, AbilityMarker};
+use crate::abilities::{Abilities, Ability, AbilityCooldown, AbilityMarker, SpawnAbilityExt};
 use crate::actions::Actions;
 use crate::buildings::line::Line;
 use crate::buildings::pulser::Pulser;
 use crate::buildings::scatter::Scatters;
-use crate::buildings::{Building, BuildingCooldown, BuildingMarker, BuildingTypes};
+use crate::buildings::{
+    Building, BuildingCooldown, BuildingMarker, BuildingTypes, SpawnBuildingExt,
+};
 use crate::game::{GameData, BORDER_PADDING_TOTAL};
 use crate::player::PlayerPoints;
 use bevy::ecs::system::SystemState;
@@ -27,10 +29,8 @@ pub fn place_building(
     cursor_world_pos: Res<CursorWorldPos>,
     mut actions: Query<(Option<&PlayerMarker>, Option<&Player>, &mut Actions)>,
     mut term_query: Query<(&mut Terminal, &ToWorld)>,
-    tiles: Query<(&PlayerMarker, &TilePos, &Tile)>,
     mut game_commands: ResMut<GameCommands>,
     game_data: Res<GameData>,
-    mut game: ResMut<Game>,
 ) {
     for (player_marker, player, mut actions) in actions.iter_mut() {
         let player_id;
@@ -59,166 +59,8 @@ pub fn place_building(
                 continue;
             }
 
-            let Some((player_marker, _, _)) = tiles
-                        .iter()
-                        .find(|(_, id, _)| id == &&target_tile_pos)else{
-                        continue;
-                    };
 
-            if player_marker.id() != player_id {
-                continue;
-            }
-
-            let mut system_state: SystemState<Query<(Entity, &Player, &mut PlayerPoints)>> =
-                SystemState::new(&mut game.game_world);
-            let mut players = system_state.get_mut(&mut game.game_world);
-
-            let Some((entity, _, mut player_points)) = players
-                        .iter_mut()
-                        .find(|(_, id, _)| id.id() == player_id)else{
-                        continue;
-                    };
-
-            match actions.selected_building {
-                BuildingTypes::Pulser => {
-                    if player_points.building_points >= 50 {
-                        actions.placed_building = true;
-
-                        let _ = game_commands.spawn_object(
-                            (
-                                ObjectGridPosition {
-                                    tile_position: target_tile_pos,
-                                },
-                                ObjectStackingClass {
-                                    stack_class: game_data
-                                        .stacking_classes
-                                        .get("Building")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Object,
-                                ObjectInfo {
-                                    object_type: game_data
-                                        .object_types
-                                        .get("Pulser")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Building {
-                                    building_type: Pulser {
-                                        strength: 7,
-                                        max_pulse_tiles: 2,
-                                    },
-                                },
-                                BuildingCooldown {
-                                    timer: Timer::from_seconds(0.15, TimerMode::Once),
-                                    timer_reset: 0.15,
-                                },
-                                BuildingMarker::default(),
-                            ),
-                            target_tile_pos,
-                            MapId { id: 1 },
-                            player_id,
-                        );
-                        player_points.building_points =
-                            player_points.building_points.saturating_sub(50);
-                        game.game_world
-                            .entity_mut(entity)
-                            .insert(Changed::default());
-                    }
-                }
-                BuildingTypes::Scatter => {
-                    if player_points.building_points >= 50 {
-                        actions.placed_building = true;
-
-                        let _ = game_commands.spawn_object(
-                            (
-                                ObjectGridPosition {
-                                    tile_position: target_tile_pos,
-                                },
-                                ObjectStackingClass {
-                                    stack_class: game_data
-                                        .stacking_classes
-                                        .get("Building")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Object,
-                                ObjectInfo {
-                                    object_type: game_data
-                                        .object_types
-                                        .get("Scatter")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Building {
-                                    building_type: Scatters {
-                                        scatter_range: 3,
-                                        scatter_amount: 20,
-                                    },
-                                },
-                                BuildingCooldown {
-                                    timer: Timer::from_seconds(0.13, TimerMode::Once),
-                                    timer_reset: 0.13,
-                                },
-                                BuildingMarker::default(),
-                            ),
-                            target_tile_pos,
-                            MapId { id: 1 },
-                            player_id,
-                        );
-                        player_points.building_points =
-                            player_points.building_points.saturating_sub(50);
-                        game.game_world
-                            .entity_mut(entity)
-                            .insert(Changed::default());
-                    }
-                }
-                BuildingTypes::Line => {
-                    if player_points.building_points >= 50 {
-                        actions.placed_building = true;
-
-                        let _ = game_commands.spawn_object(
-                            (
-                                ObjectGridPosition {
-                                    tile_position: target_tile_pos,
-                                },
-                                ObjectStackingClass {
-                                    stack_class: game_data
-                                        .stacking_classes
-                                        .get("Building")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Object,
-                                ObjectInfo {
-                                    object_type: game_data
-                                        .object_types
-                                        .get("Line")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Building {
-                                    building_type: Line { strength: 8 },
-                                },
-                                BuildingCooldown {
-                                    timer: Timer::from_seconds(0.15, TimerMode::Once),
-                                    timer_reset: 0.15,
-                                },
-                                BuildingMarker::default(),
-                            ),
-                            target_tile_pos,
-                            MapId { id: 1 },
-                            player_id,
-                        );
-                        player_points.building_points =
-                            player_points.building_points.saturating_sub(50);
-                        game.game_world
-                            .entity_mut(entity)
-                            .insert(Changed::default());
-                    }
-                }
-            }
+            game_commands.spawn_building(actions.selected_building, player_id, target_tile_pos);
         }
     }
 }
@@ -227,10 +69,8 @@ pub fn place_ability(
     cursor_world_pos: Res<CursorWorldPos>,
     mut actions: Query<(Option<&PlayerMarker>, Option<&Player>, &mut Actions)>,
     mut term_query: Query<(&mut Terminal, &ToWorld)>,
-    tiles: Query<(&PlayerMarker, &TilePos, &Tile)>,
     mut game_commands: ResMut<GameCommands>,
     game_data: Res<GameData>,
-    mut game: ResMut<Game>,
 ) {
     for (player_marker, player, mut actions) in actions.iter_mut() {
         let player_id;
@@ -259,177 +99,7 @@ pub fn place_ability(
                 continue;
             }
 
-            let mut system_state: SystemState<Query<(Entity, &Player, &mut PlayerPoints)>> =
-                SystemState::new(&mut game.game_world);
-            let mut players = system_state.get_mut(&mut game.game_world);
-
-            let Some((entity, _, mut player_points)) = players
-                .iter_mut()
-                .find(|(_, id, _)| id.id() == player_id)else{
-                continue;
-            };
-
-            match actions.selected_ability {
-                Abilities::Nuke => {
-                    if player_points.ability_points >= 50 {
-                        actions.placed_ability = true;
-
-                        let _ = game_commands.spawn_object(
-                            (
-                                ObjectGridPosition {
-                                    tile_position: target_tile_pos,
-                                },
-                                ObjectStackingClass {
-                                    stack_class: game_data
-                                        .stacking_classes
-                                        .get("Ability")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Object,
-                                ObjectInfo {
-                                    object_type: game_data
-                                        .object_types
-                                        .get("Nuke")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Ability {
-                                    ability_type: Nuke {
-                                        strength: 5,
-                                        min_tile_damage: 2,
-                                        max_tile_damage: 4,
-                                    },
-                                },
-                                AbilityCooldown {
-                                    timer: Timer::from_seconds(0.3, TimerMode::Once),
-                                    timer_reset: 0.3,
-                                    timer_ticks: 2,
-                                },
-                                AbilityMarker {
-                                    requires_player_territory: false,
-                                },
-                            ),
-                            target_tile_pos,
-                            MapId { id: 1 },
-                            player_id,
-                        );
-                        player_points.ability_points =
-                            player_points.ability_points.saturating_sub(50);
-                        game.game_world
-                            .entity_mut(entity)
-                            .insert(Changed::default());
-                    }
-                }
-                Abilities::Fortify => {
-                    let Some((player_marker, _, _)) = tiles
-                        .iter()
-                        .find(|(_, id, _)| id == &&target_tile_pos)else{
-                        continue;
-                    };
-
-                    if player_points.ability_points >= 50 && player_marker.id() == player_id {
-                        actions.placed_ability = true;
-
-                        let _ = game_commands.spawn_object(
-                            (
-                                ObjectGridPosition {
-                                    tile_position: target_tile_pos,
-                                },
-                                ObjectStackingClass {
-                                    stack_class: game_data
-                                        .stacking_classes
-                                        .get("Ability")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Object,
-                                ObjectInfo {
-                                    object_type: game_data
-                                        .object_types
-                                        .get("Fortify")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Ability {
-                                    ability_type: Fortify {
-                                        strength: 5,
-                                        min_tile_strengthen: 3,
-                                        max_tile_strengthen: 5,
-                                    },
-                                },
-                                AbilityCooldown {
-                                    timer: Timer::from_seconds(0.3, TimerMode::Once),
-                                    timer_reset: 0.3,
-                                    timer_ticks: 20,
-                                },
-                                AbilityMarker {
-                                    requires_player_territory: false,
-                                },
-                            ),
-                            target_tile_pos,
-                            MapId { id: 1 },
-                            player_id,
-                        );
-                        player_points.ability_points =
-                            player_points.ability_points.saturating_sub(50);
-                        game.game_world
-                            .entity_mut(entity)
-                            .insert(Changed::default());
-                    }
-                }
-                Abilities::Expand => {
-                    if player_points.ability_points >= 50 {
-                        actions.placed_ability = true;
-
-                        let _ = game_commands.spawn_object(
-                            (
-                                ObjectGridPosition {
-                                    tile_position: target_tile_pos,
-                                },
-                                ObjectStackingClass {
-                                    stack_class: game_data
-                                        .stacking_classes
-                                        .get("Ability")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Object,
-                                ObjectInfo {
-                                    object_type: game_data
-                                        .object_types
-                                        .get("Expand")
-                                        .unwrap()
-                                        .clone(),
-                                },
-                                Ability {
-                                    ability_type: Expand {
-                                        strength: 2,
-                                        min_tile_strengthen: 1,
-                                        max_tile_strengthen: 2,
-                                    },
-                                },
-                                AbilityCooldown {
-                                    timer: Timer::from_seconds(0.1, TimerMode::Once),
-                                    timer_reset: 0.1,
-                                    timer_ticks: 10,
-                                },
-                                AbilityMarker {
-                                    requires_player_territory: false,
-                                },
-                            ),
-                            target_tile_pos,
-                            MapId { id: 1 },
-                            player_id,
-                        );
-                        player_points.ability_points =
-                            player_points.ability_points.saturating_sub(50);
-                        game.game_world
-                            .entity_mut(entity)
-                            .insert(Changed::default());
-                    }
-                }
-            }
+            game_commands.spawn_ability(actions.selected_ability, player_id, target_tile_pos);
         }
     }
 }

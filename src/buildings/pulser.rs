@@ -1,4 +1,6 @@
-﻿use crate::buildings::{get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode};
+﻿use crate::buildings::{
+    check_is_colorable, get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode,
+};
 use crate::color_system::{convert_tile, ColorConflictEvent, TileColor, TileColorStrength};
 use bevy::prelude::{
     Commands, Component, Entity, EventWriter, FromReflect, Mut, Query, Reflect, With, Without,
@@ -118,9 +120,13 @@ pub fn simulate_pulsers(
                 }
 
                 let Some(tile_entity) = tile_storage.get(&neighbor.0) else {
-                        continue;
-                    };
+                    continue;
+                };
+
                 if let Ok((entity, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
+                    if !check_is_colorable(tile_terrain_info) {
+                        continue;
+                    }
                     if let Some((player_marker, tile_color)) = options.as_ref() {
                         if let TileColorStrength::Five = tile_color.tile_color_strength {
                         } else {

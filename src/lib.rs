@@ -6,9 +6,10 @@ mod buildings;
 mod color_system;
 mod game;
 mod loading;
-mod map;
 mod menu;
 mod player;
+mod level_loader;
+mod mapping;
 
 use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
@@ -22,8 +23,10 @@ use bevy::app::App;
 #[cfg(debug_assertions)]
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
+use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ggf::BggfDefaultPlugins;
 use ns_defaults::camera::CameraPlugin;
+use crate::level_loader::LevelHandle;
 
 // This example game uses States to separate logic
 // See https://bevy-cheatbook.github.io/programming/states.html
@@ -49,6 +52,7 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         // crate plugins
         app.add_plugins(BggfDefaultPlugins);
+        app.add_plugin(RonAssetPlugin::<level_loader::Levels>::new(&["levels.ron"]));
 
         app.add_state::<GameState>()
             .add_plugin(ColorSystemPlugin)

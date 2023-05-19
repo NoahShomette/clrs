@@ -1,4 +1,4 @@
-﻿use crate::buildings::{get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode};
+﻿use crate::buildings::{get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode, check_is_colorable};
 use crate::color_system::{convert_tile, ColorConflictEvent, TileColor};
 use bevy::prelude::{
     Commands, Component, Entity, EventWriter, FromReflect, Query, Reflect, With, Without,
@@ -119,6 +119,9 @@ pub fn simulate_lines(
                     continue;
                 };
                 if let Ok((entity, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
+                    if !check_is_colorable(tile_terrain_info) {
+                        continue;
+                    }
                     if convert_tile(
                         id,
                         &player_marker.id(),

@@ -6,11 +6,11 @@ authors = ["Noah Shomette <git@noahshomette.me>", "Kolbe Shomette"]
 edition = "2021"
 exclude = ["dist", "build", "assets", "credits"]
 
-[profile.dev.package."*"]
-opt-level = 3
-
 [profile.dev]
 opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
 
 [profile.release]
 lto = true
@@ -31,7 +31,7 @@ default = ["bevy/animation", "bevy/bevy_asset", "bevy/bevy_scene", "bevy/bevy_wi
 [dependencies]
 bevy = { version = "0.10", default-features = false }
 bevy_kira_audio = { version = "0.15" }
-bevy_asset_loader = { version = "0.15" }
+bevy_asset_loader = { version = "0.15", features = ["serde", "bevy_common_assets"] }
 rand = "0.8.3"
 bevy_ggf = { git = "https://github.com/NoahShomette/bevy_ggf.git", branch = "dev" }
 ns_defaults = { git = "https://github.com/NoahShomette/ns_defaults.git" }
@@ -39,10 +39,13 @@ bevy_ecs_tilemap = "0.10.0"
 bevy_ascii_terminal = "0.12.4"
 leafwing-input-manager = "0.9.1"
 num = "0.4.0"
+serde = "1.0.160"
+bevy_common_assets = { version = "0.6.0", features = ["ron", "serde_ron", "json", "serde_json"] }
 
 # keep the following in sync with Bevy's dependencies
 winit = { version = "0.28", default-features = false }
 image = { version = "0.24", default-features = false }
+
 
 [build-dependencies]
 embed-resource = "1.4"
