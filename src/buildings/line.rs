@@ -1,4 +1,6 @@
-﻿use crate::buildings::{get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode, check_is_colorable};
+use crate::buildings::{
+    check_is_colorable, get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode,
+};
 use crate::color_system::{convert_tile, ColorConflictEvent, TileColor};
 use bevy::prelude::{
     Commands, Component, Entity, EventWriter, FromReflect, Query, Reflect, With, Without,

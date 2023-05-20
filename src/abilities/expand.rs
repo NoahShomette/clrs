@@ -1,5 +1,7 @@
-﻿use crate::abilities::{Ability, AbilityCooldown, DestroyAbility};
-use crate::buildings::{get_neighbors_tilepos, tile_cost_check, Activate, TileNode, check_is_colorable};
+use crate::abilities::{Ability, AbilityCooldown, DestroyAbility};
+use crate::buildings::{
+    check_is_colorable, get_neighbors_tilepos, tile_cost_check, Activate, TileNode,
+};
 use crate::color_system::{
     convert_tile, register_guaranteed_color_conflict, ColorConflictEvent, ColorConflictGuarantees,
     ConflictType, TileColor, TileColorStrength,

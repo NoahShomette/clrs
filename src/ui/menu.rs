@@ -17,8 +17,7 @@ impl Plugin for MenuPlugin {
 }
 
 pub fn setup_menu(mut commands: Commands) {
-    commands
-        .spawn(GGFCamera2dBundle::default());
+    commands.spawn(GGFCamera2dBundle::default());
 }
 
 pub fn handle_menu(

@@ -21,9 +21,7 @@ pub struct PlayerPoints {
 /// This plugin handles player related stuff like movement
 /// Player logic is only active during the State `GameState::Playing`
 impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) {
-        
-    }
+    fn build(&self, app: &mut App) {}
 }
 
 pub fn update_player_points(

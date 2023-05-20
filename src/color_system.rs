@@ -637,8 +637,8 @@ impl Default for PlayerColors {
                     String::from("5e9d6a"),
                     String::from("45344a"),
                 ],
-                noncolorable_tile: "272135".to_string(),
-                colorable_tile: "ffffff".to_string(),
+                noncolorable_tile: "000000".to_string(),
+                colorable_tile: "272135".to_string(),
             },
             palettes: vec![
                 Palette {
@@ -648,7 +648,7 @@ impl Default for PlayerColors {
                         String::from("5e9d6a"),
                         String::from("45344a"),
                     ],
-                    noncolorable_tile: "272135".to_string(),
+                    noncolorable_tile: "000000".to_string(),
                     colorable_tile: "272135".to_string(),
                 },
                 Palette {
@@ -658,7 +658,7 @@ impl Default for PlayerColors {
                         String::from("598344"),
                         String::from("d09071"),
                     ],
-                    noncolorable_tile: "272135".to_string(),
+                    noncolorable_tile: "000000".to_string(),
                     colorable_tile: "272135".to_string(),
                 },
                 Palette {
@@ -668,7 +668,7 @@ impl Default for PlayerColors {
                         String::from("de9139"),
                         String::from("e6cb47"),
                     ],
-                    noncolorable_tile: "272135".to_string(),
+                    noncolorable_tile: "000000".to_string(),
                     colorable_tile: "272135".to_string(),
                 },
                 Palette {
@@ -678,7 +678,7 @@ impl Default for PlayerColors {
                         String::from("7bc043"),
                         String::from("f37736"),
                     ],
-                    noncolorable_tile: "272135".to_string(),
+                    noncolorable_tile: "000000".to_string(),
                     colorable_tile: "fdf498".to_string(),
                 },
                 Palette {
@@ -688,7 +688,7 @@ impl Default for PlayerColors {
                         String::from("00ddff"),
                         String::from("000000"),
                     ],
-                    noncolorable_tile: "272135".to_string(),
+                    noncolorable_tile: "000000".to_string(),
                     colorable_tile: "ffffff".to_string(),
                 },
             ],

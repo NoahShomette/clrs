@@ -12,8 +12,8 @@ use ns_defaults::camera::CursorWorldPos;
 use crate::buildings::BuildingTypes;
 use crate::color_system::PlayerColors;
 use crate::game::{simulate_game, GameBuildSettings, GameData, BORDER_PADDING_TOTAL};
-use crate::GameState;
 use crate::ui::MenuNavigation;
+use crate::GameState;
 
 mod game_control;
 
@@ -123,7 +123,7 @@ pub fn paused_controls(
     if menu_nav.0 == 1 {
         term.put_string([0, term_size.y - 5], "MENU".fg(player_colors.get_color(0)));
     }
-    
+
      */
 
     if keyboard_input.just_pressed(KeyCode::Escape) {

@@ -5,10 +5,10 @@ use bevy::prelude::*;
 use bevy::window::{PrimaryWindow, WindowMode};
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
-use clrs::GamePlugin;
-use std::io::Cursor;
 use bevy_tweening::TweeningPlugin;
 use bevy_vector_shapes::Shape2dPlugin;
+use clrs::GamePlugin;
+use std::io::Cursor;
 use winit::window::Icon;
 
 fn main() {
