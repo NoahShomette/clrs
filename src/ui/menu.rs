@@ -1,4 +1,3 @@
-use crate::color_system::PlayerColors;
 use crate::game::GameBuildSettings;
 use crate::level_loader::{LevelHandle, Levels};
 use crate::GameState;
@@ -6,7 +5,7 @@ use bevy::app::AppExit;
 use bevy::prelude::*;
 use ns_defaults::camera::GGFCamera2dBundle;
 
-use crate::ui::MenuNavigation;
+use crate::ui::{MenuNavigation, PlayerColors};
 
 pub struct MenuPlugin;
 
@@ -16,9 +15,7 @@ impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {}
 }
 
-pub fn setup_menu(mut commands: Commands) {
-    commands.spawn(GGFCamera2dBundle::default());
-}
+pub fn setup_menu(mut commands: Commands) {}
 
 pub fn handle_menu(
     mut next_state: ResMut<NextState<GameState>>,

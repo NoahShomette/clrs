@@ -121,11 +121,11 @@ impl GameBuildSettings {
 
         if self.map_size > 100 {
             self.map_size = 100;
+        }
 
-            #[cfg(target_arch = "wasm32")]
-            if self.map_size > 60 {
-                self.map_size = 60;
-            }
+        #[cfg(target_arch = "wasm32")]
+        if self.map_size > 60 {
+            self.map_size = 60;
         }
     }
 
@@ -159,7 +159,7 @@ impl FromWorld for GameBuildSettings {
         world.resource_scope(|world, maps: Mut<LevelHandle>| {
             world.resource_scope(|world, assets: Mut<Assets<Levels>>| {
                 return Self {
-                    map_size: 30,
+                    map_size: 100,
                     enemy_count: 1,
                     map_type: 0,
                     max_map: assets.get(&maps.levels).unwrap().levels.len(),
@@ -536,6 +536,7 @@ pub fn setup_game(
             run_ai_ability,
             handle_color_conflict_guarantees,
             handle_color_conflicts,
+            apply_system_buffers,
             destroy_buildings,
             destroy_abilities,
             apply_system_buffers,

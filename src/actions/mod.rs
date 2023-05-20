@@ -1,18 +1,15 @@
 use crate::abilities::Abilities;
 use crate::actions::game_control::{place_ability, place_building};
-use bevy::prelude::KeyCode::Pause;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::game_core::Game;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::object::Object;
 use bevy_ggf::player::{Player, PlayerMarker};
-use ns_defaults::camera::CursorWorldPos;
 
 use crate::buildings::BuildingTypes;
-use crate::color_system::PlayerColors;
 use crate::game::{simulate_game, GameBuildSettings, GameData, BORDER_PADDING_TOTAL};
-use crate::ui::MenuNavigation;
+use crate::ui::{MenuNavigation, PlayerColors};
 use crate::GameState;
 
 mod game_control;

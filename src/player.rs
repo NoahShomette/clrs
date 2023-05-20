@@ -52,28 +52,3 @@ pub fn update_player_points(
         points_timer.reset();
     }
 }
-
-/// We added the ns_default camera setup which handles this. Leaving this in case we want to remove
-/// camera movement. We would need to reinsert CursorWorldPos though
-fn update_cursor_world_pos(
-    mut query: Query<(&GlobalTransform, &Camera)>,
-    mut cursor_world_pos: ResMut<CursorWorldPos>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-) {
-    let Ok((global_transform, camera)) = query.get_single_mut() else{
-        return;
-    };
-
-    let Ok(wnd) = windows.get_single() else {
-        return;
-    };
-
-    //if the cursor is inside the current window then we want to update the cursor position
-    if let Some(current_cursor_position) = wnd.cursor_position() {
-        let Some(ray) = camera
-            .viewport_to_world(global_transform, current_cursor_position) else{
-            return;
-        };
-        cursor_world_pos.cursor_world_pos = ray.origin.truncate();
-    }
-}

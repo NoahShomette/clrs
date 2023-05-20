@@ -1,15 +1,16 @@
-use crate::color_system::{PlayerColors, TileColor};
+use crate::color_system::TileColor;
 use crate::draw::{DrawObject, DrawTile, MyColorLens};
 use crate::game::state::OldTileState;
 use crate::game::GameData;
-use crate::loading::FontAssets;
+use crate::loading::{FontAssets, TextureAssets};
+use crate::ui::PlayerColors;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::object::{ObjectGridPosition, ObjectInfo};
 use bevy_ggf::player::PlayerMarker;
 use bevy_tweening::lens::TransformScaleLens;
-use bevy_tweening::{Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween};
+use bevy_tweening::{Animator, EaseFunction, RepeatCount, Tween};
 use bevy_vector_shapes::prelude::{RectangleBundle, ShapeConfig, ThicknessType};
 use bevy_vector_shapes::render::ShapePipelineType;
 use std::time::Duration;
@@ -19,12 +20,6 @@ pub const TILE_GAP: f32 = 0.0;
 pub const TILE_OUTLINE: f32 = 2.0;
 
 pub const OBJECT_SIZE: f32 = 24.0;
-
-enum TileChange {
-    ColorDecrease,
-    NoChange,
-    ColorIncrease,
-}
 
 pub fn draw_tile_backgrounds(
     game_info: Res<GameData>,
@@ -112,16 +107,14 @@ pub fn draw_tiles(
                         "NonColorable" => player_colors.get_noncolorable(),
                         _ => player_colors.get_colorable(),
                     },
-                    Some(tile_color) => player_colors.get_color(old_tile_state.player_id.unwrap()),
+                    Some(_) => player_colors.get_color(old_tile_state.player_id.unwrap()),
                 },
                 end: match options {
                     None => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
                         "NonColorable" => player_colors.get_noncolorable(),
                         _ => player_colors.get_colorable(),
                     },
-                    Some((tile_color, player_marker)) => {
-                        player_colors.get_color(player_marker.id())
-                    }
+                    Some((_, player_marker)) => player_colors.get_color(player_marker.id()),
                 },
             },
         )
@@ -145,7 +138,7 @@ pub fn draw_tiles(
                         y: 0.0,
                         z: 1.0,
                     },
-                    Some((tile_color, player_marker)) => tile_color.get_scale(),
+                    Some((tile_color, _)) => tile_color.get_scale(),
                 },
             },
         )
@@ -175,9 +168,7 @@ pub fn draw_tiles(
                             "NonColorable" => player_colors.get_noncolorable(),
                             _ => player_colors.get_colorable(),
                         },
-                        Some((tile_color, player_marker)) => {
-                            player_colors.get_color(player_marker.id())
-                        }
+                        Some((_, player_marker)) => player_colors.get_color(player_marker.id()),
                     },
                     hollow: false,
                     cap: Default::default(),
@@ -213,6 +204,7 @@ pub fn draw_objects(
     game_info: Res<GameData>,
     tile_query: Query<(Entity, &DrawObject, &ObjectInfo, &ObjectGridPosition)>,
     mut commands: Commands,
+    texture_assets: Res<TextureAssets>,
 ) {
     for (entity, _, object_info, tile_pos) in tile_query.iter() {
         let card_x = (tile_pos.tile_position.x as f32 * (TILE_SIZE + TILE_GAP))
@@ -247,11 +239,19 @@ pub fn draw_objects(
                     roundness: 0.0,
                     corner_radii: Vec4::new(0.0, 0.0, 0.0, 0.0),
                     render_layers: None,
-                    alpha_mode: Default::default(),
+                    alpha_mode: AlphaMode::Blend,
                     disable_laa: false,
                     instance_id: 0,
                     canvas: None,
-                    texture: None,
+                    texture: match object_info.object_type.name.as_str() {
+                        "Pulser" => Some(texture_assets.pulser.clone()),
+                        "Scatter" => Some(texture_assets.scatter.clone()),
+                        "Line" => Some(texture_assets.line.clone()),
+                        "Nuke" => Some(texture_assets.nuke.clone()),
+                        "Fortify" => Some(texture_assets.fortify.clone()),
+                        "Expand" => Some(texture_assets.expand.clone()),
+                        &_ => Some(texture_assets.pulser.clone()),
+                    },
                     pipeline: ShapePipelineType::Shape2d,
                 },
                 Vec2 {

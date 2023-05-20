@@ -19,7 +19,7 @@ use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
-use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks};
+use bevy_ggf::mapping::tiles::{ObjectStackingClass, StackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId, ObjectInfo};
 use bevy_ggf::player::{Player, PlayerMarker};
@@ -249,15 +249,32 @@ pub fn destroy_buildings(
             &ObjectId,
             &ObjectGridPosition,
             &BuildingMarker,
+            &ObjectStackingClass,
         ),
         With<Object>,
     >,
-    mut tiles: Query<(Entity, &TileTerrainInfo, &PlayerMarker), (Without<Object>, With<Tile>)>,
+    mut tiles: Query<
+        (
+            Entity,
+            &TileTerrainInfo,
+            Option<&PlayerMarker>,
+            &mut TileObjectStacks,
+        ),
+        (Without<Object>, With<Tile>),
+    >,
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut commands: Commands,
     mut despawn_objects: ResMut<DespawnedObjects>,
 ) {
-    for (building_entity, player_marker, object_id, object_grid_pos, building) in buildings.iter() {
+    for (
+        building_entity,
+        player_marker,
+        object_id,
+        object_grid_pos,
+        building,
+        object_stacking_class,
+    ) in buildings.iter()
+    {
         let Some((_, tile_storage)) = tile_storage_query
             .iter_mut()
             .find(|(id, _)| id == &&MapId { id: 1 })else {
@@ -266,18 +283,33 @@ pub fn destroy_buildings(
 
         let tile_entity = tile_storage.get(&object_grid_pos.tile_position).unwrap();
 
-        let Ok((entity, tile_terrain_info, tile_marker)) = tiles.get_mut(tile_entity) else {
+        let Ok((entity, tile_terrain_info, tile_marker, mut tile_object_stacks)) = tiles.get_mut(tile_entity) else {
             continue;
         };
+        let mut destroy_ability = false;
+        if let Some(tile_marker) = tile_marker {
+            // if there is a tile marker and its not the same as the buildings kill it
+            if player_marker != tile_marker {
+                destroy_ability = true;
+            }
+            // if there is no tile marker then the building dies
+        } else {
+            destroy_ability = true;
+        }
 
-        if player_marker != tile_marker
-            || tile_terrain_info.terrain_type.terrain_class.name.as_str() == "NonColorable"
-        {
+        // if the tile is noncolorable kill it
+        if tile_terrain_info.terrain_type.terrain_class.name.as_str() == "NonColorable" {
+            destroy_ability = true;
+        }
+
+        if destroy_ability {
             println!("killing buildings");
             despawn_objects
                 .despawned_objects
                 .insert(*object_id, Changed::default());
             commands.entity(building_entity).despawn();
+
+            tile_object_stacks.decrement_object_class_count(object_stacking_class);
         }
     }
 }

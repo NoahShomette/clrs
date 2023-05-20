@@ -23,8 +23,7 @@ pub struct Nuke {
     pub min_tile_damage: u32,
     pub max_tile_damage: u32,
 }
-// two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
-// are not the same player then we damage their color by one. Otherwise at that point we stop.
+//
 pub fn simulate_nukes(
     mut tile_storage_query: Query<(Entity, &MapId, &TileStorage, &TilemapSize)>,
     pulsers: Query<

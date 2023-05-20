@@ -1,4 +1,9 @@
-use crate::level_loader::LevelHandle;
+pub mod colors_loader;
+pub mod level_loader;
+
+use crate::loading::colors_loader::PalettesHandle;
+use crate::loading::level_loader::LevelHandle;
+use crate::ui::PlayerColors;
 use crate::GameState;
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
@@ -17,7 +22,10 @@ impl Plugin for LoadingPlugin {
         .add_collection_to_loading_state::<_, FontAssets>(GameState::Loading)
         .add_collection_to_loading_state::<_, AudioAssets>(GameState::Loading)
         .add_collection_to_loading_state::<_, LevelHandle>(GameState::Loading)
-        .add_collection_to_loading_state::<_, TextureAssets>(GameState::Loading);
+        .add_collection_to_loading_state::<_, TextureAssets>(GameState::Loading)
+        .add_collection_to_loading_state::<_, PalettesHandle>(GameState::Loading);
+
+        app.init_resource_after_loading_state::<_, PlayerColors>(GameState::Loading);
     }
 }
 
@@ -48,6 +56,16 @@ pub struct AudioAssets {
 
 #[derive(AssetCollection, Resource)]
 pub struct TextureAssets {
-    //#[asset(path = "textures/bevy.png")]
-    //pub texture_bevy: Handle<Image>,
+    #[asset(path = "textures/pulser.png")]
+    pub pulser: Handle<Image>,
+    #[asset(path = "textures/scatter.png")]
+    pub scatter: Handle<Image>,
+    #[asset(path = "textures/line.png")]
+    pub line: Handle<Image>,
+    #[asset(path = "textures/nuke.png")]
+    pub nuke: Handle<Image>,
+    #[asset(path = "textures/fortify.png")]
+    pub fortify: Handle<Image>,
+    #[asset(path = "textures/expand.png")]
+    pub expand: Handle<Image>,
 }

@@ -3,10 +3,10 @@ mod actions;
 mod ai;
 mod audio;
 mod buildings;
+mod camera;
 mod color_system;
 mod draw;
 mod game;
-mod level_loader;
 mod loading;
 mod mapping;
 mod player;
@@ -14,12 +14,14 @@ mod ui;
 
 use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
-use crate::loading::LoadingPlugin;
+use crate::loading::{level_loader, LoadingPlugin};
 use crate::player::PlayerPlugin;
 
+use crate::camera::CameraPlugin;
 use crate::color_system::ColorSystemPlugin;
 use crate::draw::DrawPlugin;
 use crate::game::GameCorePlugin;
+use crate::loading::colors_loader::PalettesAssets;
 use crate::ui::UiPlugin;
 use bevy::app::App;
 #[cfg(debug_assertions)]
@@ -53,6 +55,7 @@ impl Plugin for GamePlugin {
         // crate plugins
         app.add_plugins(BggfDefaultPlugins);
         app.add_plugin(RonAssetPlugin::<level_loader::Levels>::new(&["levels.ron"]));
+        app.add_plugin(RonAssetPlugin::<PalettesAssets>::new(&["palettes.ron"]));
 
         app.add_state::<GameState>()
             .add_plugin(ColorSystemPlugin)
@@ -61,6 +64,7 @@ impl Plugin for GamePlugin {
             .add_plugin(DrawPlugin)
             .add_plugin(ActionsPlugin)
             .add_plugin(InternalAudioPlugin)
+            .add_plugin(CameraPlugin)
             .add_plugin(PlayerPlugin)
             .add_plugin(GameCorePlugin);
 

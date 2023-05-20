@@ -1,0 +1,51 @@
+(palettes:[
+    Palette (
+        player_colors: [
+            "d3bf77",
+            "657a85",
+            "5e9d6a",
+            "45344a",
+        ],
+        noncolorable_tile: "000000",
+        colorable_tile: "272135",
+    ),
+    Palette (
+        player_colors: [
+            "00177c",
+            "84396c",
+            "598344",
+            "d09071",
+        ],
+        noncolorable_tile: "000000",
+        colorable_tile: "272135",
+    ),
+    Palette (
+        player_colors: [
+            "425e9a",
+            "39a441",
+            "de9139",
+            "e6cb47",
+        ],
+        noncolorable_tile: "000000",
+        colorable_tile: "272135",
+    ),
+    Palette (
+        player_colors: [
+            "0392cf",
+            "ee4035",
+            "7bc043",
+            "f37736",
+        ],
+        noncolorable_tile: "000000",
+        colorable_tile: "fdf498",
+    ),
+    Palette (
+        player_colors: [
+            "fff200",
+            "e500ff",
+            "00ddff",
+            "000000",
+        ],
+        noncolorable_tile: "000000",
+        colorable_tile: "ffffff",
+    ), ])

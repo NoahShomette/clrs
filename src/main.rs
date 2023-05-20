@@ -15,18 +15,22 @@ fn main() {
     App::new()
         .insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::BLACK))
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "clrs".to_string(),
-                fit_canvas_to_parent: true,
-                canvas: Some("#bevy".to_owned()),
-                #[cfg(not(target_arch = "wasm32"))]
-                resolution: (1280., 720.).into(),
-                ..default()
-            }),
-            ..default()
-        }))
-        .add_plugin(ns_defaults::camera::CameraPlugin)
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "clrs".to_string(),
+                        fit_canvas_to_parent: true,
+                        canvas: Some("#bevy".to_owned()),
+                        #[cfg(not(target_arch = "wasm32"))]
+                        resolution: (1280., 720.).into(),
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(ImagePlugin::default_nearest()),
+        )
+        //.add_plugin(ns_defaults::camera::CameraPlugin)
         .add_plugin(TweeningPlugin)
         .add_plugin(Shape2dPlugin::default())
         .add_plugin(GamePlugin)

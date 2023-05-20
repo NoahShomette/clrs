@@ -13,10 +13,12 @@ use bevy::prelude::{
     Commands, Component, Entity, FromReflect, Query, Reflect, Res, ResMut, Time, Timer, TimerMode,
     With, Without, World,
 };
+use bevy_ecs_tilemap::prelude::TileStorage;
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
-use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile};
+use bevy_ggf::mapping::terrain::TileTerrainInfo;
+use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId, ObjectInfo};
 use bevy_ggf::player::{Player, PlayerMarker};
@@ -239,15 +241,41 @@ impl GameCommand for SpawnAbility {
 }
 
 pub fn destroy_abilities(
-    abilities: Query<(Entity, &ObjectId, &AbilityMarker), (With<Object>, With<DestroyAbility>)>,
+    abilities: Query<
+        (
+            Entity,
+            &ObjectId,
+            &AbilityMarker,
+            &ObjectGridPosition,
+            &ObjectStackingClass,
+        ),
+        (With<Object>, With<DestroyAbility>),
+    >,
+    mut tiles: Query<(Entity, &mut TileObjectStacks), (Without<Object>, With<Tile>)>,
+    mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut commands: Commands,
     mut despawn_objects: ResMut<DespawnedObjects>,
 ) {
-    for (building_entity, object_id, ability) in abilities.iter() {
+    for (building_entity, object_id, ability, object_grid_pos, object_stacking_class) in
+        abilities.iter()
+    {
+        let Some((_, tile_storage)) = tile_storage_query
+            .iter_mut()
+            .find(|(id, _)| id == &&MapId { id: 1 })else {
+            continue;
+        };
+
+        let tile_entity = tile_storage.get(&object_grid_pos.tile_position).unwrap();
+
+        let Ok((entity, mut tile_object_stacks)) = tiles.get_mut(tile_entity) else {
+            continue;
+        };
+
         despawn_objects
             .despawned_objects
             .insert(*object_id, Changed::default());
         commands.entity(building_entity).despawn();
+        tile_object_stacks.decrement_object_class_count(object_stacking_class);
     }
 }
 

@@ -1,4 +1,4 @@
-﻿mod draw;
+﻿pub mod draw;
 
 use crate::actions::paused_controls;
 use crate::draw::draw::{draw_objects, draw_tile_backgrounds, draw_tiles, TILE_GAP, TILE_SIZE};
