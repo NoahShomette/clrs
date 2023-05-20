@@ -1,28 +1,52 @@
 ﻿mod draw;
 
+use crate::actions::paused_controls;
+use crate::draw::draw::{draw_objects, draw_tile_backgrounds, draw_tiles, TILE_GAP, TILE_SIZE};
+use crate::GameState;
 use bevy::app::App;
 use bevy::prelude::*;
-use bevy_ecs_tilemap::prelude::{TilemapGridSize, TilemapSize, TilemapType, TilePos};
-use crate::actions::paused_controls;
-use crate::draw::draw::{draw_tiles, draw_objects, TILE_SIZE, TILE_GAP};
-use crate::GameState;
+use bevy_ecs_tilemap::prelude::{TilePos, TilemapGridSize, TilemapSize, TilemapType};
+use bevy_tweening::Lens;
+use bevy_vector_shapes::shapes::Rectangle;
 
 pub struct DrawPlugin;
 
-impl Plugin for DrawPlugin{
+impl Plugin for DrawPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            (draw_tiles, draw_objects).in_set(OnUpdate(GameState::Playing))
+            (draw_tile_backgrounds, draw_tiles, draw_objects).in_set(OnUpdate(GameState::Playing)),
         );
         app.add_systems(
-            (draw_tiles, draw_objects).before(paused_controls)
-                .in_set(OnUpdate(GameState::Paused))
+            (draw_tile_backgrounds, draw_tiles, draw_objects)
+                .before(paused_controls)
+                .in_set(OnUpdate(GameState::Paused)),
         );
         app.add_systems(
-            (draw_tiles, draw_objects).in_set(OnUpdate(GameState::Ended))
+            (draw_tile_backgrounds, draw_tiles, draw_objects).in_set(OnUpdate(GameState::Ended)),
         );
 
-       // app.add_system(draw_game_over.in_set(OnUpdate(GameState::Ended)));
+        // app.add_system(draw_game_over.in_set(OnUpdate(GameState::Ended)));
+    }
+}
+
+struct MyColorLens {
+    start: Color,
+    end: Color,
+}
+
+impl Lens<Rectangle> for MyColorLens {
+    fn lerp(&mut self, target: &mut Rectangle, ratio: f32) {
+        let color_vec = Vec4::new(
+            self.start.r(),
+            self.start.g(),
+            self.start.b(),
+            self.start.a(),
+        )
+        .lerp(
+            Vec4::new(self.end.r(), self.end.g(), self.end.b(), self.end.a()),
+            ratio,
+        );
+        target.color = Color::rgba_linear(color_vec.x, color_vec.y, color_vec.z, color_vec.w);
     }
 }
 

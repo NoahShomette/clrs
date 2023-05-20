@@ -1,11 +1,11 @@
 pub mod end_game;
-mod state;
+pub mod state;
 
 use crate::abilities::expand::simulate_expands;
 use crate::abilities::fortify::simulate_fortifies;
 use crate::abilities::nuke::simulate_nukes;
 use crate::abilities::{destroy_abilities, update_ability_timers};
-use crate::actions::{paused_controls, Actions};
+use crate::actions::Actions;
 use crate::ai::{run_ai_ability, run_ai_building};
 use crate::buildings::line::simulate_lines;
 use crate::buildings::pulser::{simulate_pulsers, Pulser};
@@ -23,10 +23,11 @@ use crate::level_loader::{LevelHandle, Levels};
 use crate::mapping::map::MapCommandsExt;
 use crate::player::{update_player_points, PlayerPoints};
 use crate::GameState;
+
 use bevy::app::App;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
-use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize, TilemapTileSize, TilemapType};
+use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize};
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::runner::GameRunner;
 use bevy_ggf::game_core::{Game, GameBuilder, GameRuntime};
@@ -47,15 +48,20 @@ impl Plugin for GameCorePlugin {
     fn build(&self, app: &mut App) {
         app.add_system(setup_game_resource.in_schedule(OnEnter(GameState::Menu)));
         app.add_system(start_game.in_schedule(OnEnter(GameState::Playing)));
-        app.add_system(update_game_state.in_set(OnUpdate(GameState::Playing)));
 
         app.add_system(check_game_ended.in_set(OnUpdate(GameState::Playing)));
         app.add_system(check_game_ended.in_set(OnUpdate(GameState::Paused)));
 
         app.add_system(
             simulate_game
-                .in_schedule(CoreSchedule::FixedUpdate)
-                .run_if(in_state(GameState::Playing)),
+                .run_if(in_state(GameState::Playing))
+                .in_schedule(CoreSchedule::FixedUpdate),
+        );
+        app.add_system(
+            update_game_state
+                .run_if(in_state(GameState::Playing))
+                .after(simulate_game)
+                .in_schedule(CoreSchedule::FixedUpdate),
         );
         app.insert_resource(FixedTime::new_from_secs(0.01));
     }

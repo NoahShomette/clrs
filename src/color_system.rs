@@ -1,5 +1,6 @@
 use crate::player::PlayerPoints;
 use bevy::app::{App, Plugin};
+use bevy::math::Vec3;
 use bevy::prelude::{
     unwrap, Color, Commands, Component, Entity, EventReader, EventWriter, FromReflect, Mut, Query,
     ResMut, Resource, With, Without,
@@ -512,6 +513,40 @@ pub struct TileColor {
 }
 
 impl TileColor {
+    pub fn get_scale(&self) -> Vec3 {
+        match self.tile_color_strength {
+            TileColorStrength::Neutral => Vec3 {
+                x: 1.0,
+                y: 1.0,
+                z: 1.0,
+            },
+            TileColorStrength::One => Vec3 {
+                x: 0.5,
+                y: 0.5,
+                z: 1.0,
+            },
+            TileColorStrength::Two => Vec3 {
+                x: 0.6,
+                y: 0.6,
+                z: 1.0,
+            },
+            TileColorStrength::Three => Vec3 {
+                x: 0.7,
+                y: 0.7,
+                z: 1.0,
+            },
+            TileColorStrength::Four => Vec3 {
+                x: 0.8,
+                y: 0.8,
+                z: 1.0,
+            },
+            TileColorStrength::Five => Vec3 {
+                x: 1.0,
+                y: 1.0,
+                z: 1.0,
+            },
+        }
+    }
     pub fn get_normalized_number_representation(&self) -> f32 {
         match self.tile_color_strength {
             TileColorStrength::Neutral => 0.0,

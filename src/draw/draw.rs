@@ -1,28 +1,88 @@
-use crate::abilities::Abilities;
-use crate::actions::Actions;
-use crate::buildings::BuildingTypes;
-use crate::color_system::{PlayerColors, TileColor, TileColorStrength};
-use crate::draw::{DrawObject, DrawTile};
-use crate::game::end_game::GameEnded;
-use crate::game::{GameData, BORDER_PADDING_TOTAL};
+use crate::color_system::{PlayerColors, TileColor};
+use crate::draw::{DrawObject, DrawTile, MyColorLens};
+use crate::game::state::OldTileState;
+use crate::game::GameData;
 use crate::loading::FontAssets;
-use crate::player::PlayerPoints;
-use crate::GameState;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
-use bevy_ggf::mapping::tiles::Tile;
-use bevy_ggf::object::{Object, ObjectGridPosition, ObjectInfo, ObjectType};
-use bevy_ggf::player::{Player, PlayerMarker};
-use bevy_vector_shapes::prelude::{DiscBundle, RectangleBundle, ShapeConfig, ThicknessType};
+use bevy_ggf::object::{ObjectGridPosition, ObjectInfo};
+use bevy_ggf::player::PlayerMarker;
+use bevy_tweening::lens::TransformScaleLens;
+use bevy_tweening::{Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween};
+use bevy_vector_shapes::prelude::{RectangleBundle, ShapeConfig, ThicknessType};
 use bevy_vector_shapes::render::ShapePipelineType;
+use std::time::Duration;
 
 pub const TILE_SIZE: f32 = 32.0;
-pub const TILE_GAP: f32 = 2.0;
+pub const TILE_GAP: f32 = 0.0;
 pub const TILE_OUTLINE: f32 = 2.0;
 
 pub const OBJECT_SIZE: f32 = 24.0;
+
+enum TileChange {
+    ColorDecrease,
+    NoChange,
+    ColorIncrease,
+}
+
+pub fn draw_tile_backgrounds(
+    game_info: Res<GameData>,
+    tile_query: Query<(Entity, &DrawTile, &TileTerrainInfo, &TilePos)>,
+    player_colors: Res<PlayerColors>,
+    mut commands: Commands,
+) {
+    for (entity, _, tile_terrain_info, tile_pos) in tile_query.iter() {
+        let card_x = (tile_pos.x as f32 * (TILE_SIZE + TILE_GAP))
+            - ((game_info.map_size_x as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
+        let card_y = (tile_pos.y as f32 * (TILE_SIZE + TILE_GAP))
+            - ((game_info.map_size_y as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
+
+        let child = commands
+            .spawn(bevy_vector_shapes::shapes::ShapeBundle::rect(
+                &ShapeConfig {
+                    transform: Transform {
+                        translation: Vec3 {
+                            x: card_x,
+                            y: card_y,
+                            z: 1.0,
+                        },
+                        rotation: Default::default(),
+                        scale: Vec3 {
+                            x: 1.0,
+                            y: 1.0,
+                            z: 1.0,
+                        },
+                    },
+                    color: match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
+                        "NonColorable" => player_colors.get_noncolorable(),
+                        _ => player_colors.get_colorable(),
+                    },
+                    hollow: false,
+                    cap: Default::default(),
+                    thickness: TILE_OUTLINE,
+                    thickness_type: ThicknessType::World,
+                    corner_radii: Default::default(),
+                    render_layers: None,
+                    alpha_mode: AlphaMode::Blend,
+                    disable_laa: false,
+                    instance_id: 0,
+                    canvas: None,
+                    texture: None,
+                    alignment: Default::default(),
+                    roundness: 0.0,
+                    pipeline: ShapePipelineType::Shape2d,
+                },
+                Vec2 {
+                    x: TILE_SIZE,
+                    y: TILE_SIZE,
+                },
+            ))
+            .id();
+
+        commands.entity(entity).push_children(&[child]);
+    }
+}
 
 pub fn draw_tiles(
     game_info: Res<GameData>,
@@ -31,63 +91,120 @@ pub fn draw_tiles(
         &DrawTile,
         &TileTerrainInfo,
         &TilePos,
+        &OldTileState,
         Option<(&TileColor, &PlayerMarker)>,
     )>,
-    font_handle: Res<FontAssets>,
     player_colors: Res<PlayerColors>,
     mut commands: Commands,
 ) {
-    for (entity, _, tile_terrain_info, tile_pos, options) in tile_query.iter() {
+    for (entity, _, tile_terrain_info, tile_pos, old_tile_state, options) in tile_query.iter() {
         let card_x = (tile_pos.x as f32 * (TILE_SIZE + TILE_GAP))
             - ((game_info.map_size_x as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
         let card_y = (tile_pos.y as f32 * (TILE_SIZE + TILE_GAP))
             - ((game_info.map_size_y as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
 
-        commands.spawn(bevy_vector_shapes::shapes::ShapeBundle::rect(
-            &ShapeConfig {
-                transform: Transform {
-                    translation: Vec3 {
-                        x: card_x,
-                        y: card_y,
-                        z: 1.0,
-                    },
-                    rotation: Default::default(),
-                    scale: Vec3 {
-                        x: 1.0,
-                        y: 1.0,
-                        z: 1.0,
-                    },
-                },
-                color: match options {
+        let tween = Tween::new(
+            EaseFunction::QuadraticInOut,
+            Duration::from_millis(100),
+            MyColorLens {
+                start: match &old_tile_state.tile_color {
                     None => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
                         "NonColorable" => player_colors.get_noncolorable(),
                         _ => player_colors.get_colorable(),
                     },
-                    Some((tile_color, player_marker)) => player_colors
-                        .get_color(player_marker.id())
-                        .with_a(tile_color.get_normalized_number_representation()),
+                    Some(tile_color) => player_colors.get_color(old_tile_state.player_id.unwrap()),
                 },
-                hollow: false,
-                cap: Default::default(),
-                thickness: TILE_OUTLINE,
-                thickness_type: ThicknessType::World,
-                corner_radii: Default::default(),
-                render_layers: None,
-                alpha_mode: Default::default(),
-                disable_laa: false,
-                instance_id: 0,
-                canvas: None,
-                texture: None,
-                alignment: Default::default(),
-                roundness: 0.0,
-                pipeline: ShapePipelineType::Shape2d,
+                end: match options {
+                    None => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
+                        "NonColorable" => player_colors.get_noncolorable(),
+                        _ => player_colors.get_colorable(),
+                    },
+                    Some((tile_color, player_marker)) => {
+                        player_colors.get_color(player_marker.id())
+                    }
+                },
             },
-            Vec2 {
-                x: TILE_SIZE,
-                y: TILE_SIZE,
-            },
-        ));
+        )
+        .with_repeat_count(RepeatCount::Finite(1));
 
+        let transform_tween = Tween::new(
+            EaseFunction::QuadraticInOut,
+            Duration::from_millis(200),
+            TransformScaleLens {
+                start: match &old_tile_state.tile_color {
+                    None => Vec3 {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 1.0,
+                    },
+                    Some(tile_color) => tile_color.get_scale(),
+                },
+                end: match options {
+                    None => Vec3 {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 1.0,
+                    },
+                    Some((tile_color, player_marker)) => tile_color.get_scale(),
+                },
+            },
+        )
+        .with_repeat_count(RepeatCount::Finite(1));
+
+        let child = commands
+            .spawn(bevy_vector_shapes::shapes::ShapeBundle::rect(
+                &ShapeConfig {
+                    transform: Transform {
+                        translation: Vec3 {
+                            x: card_x,
+                            y: card_y,
+                            z: 2.0,
+                        },
+                        rotation: Default::default(),
+                        scale: match &old_tile_state.tile_color {
+                            None => Vec3 {
+                                x: 0.0,
+                                y: 0.0,
+                                z: 1.0,
+                            },
+                            Some(tile_color) => tile_color.get_scale(),
+                        },
+                    },
+                    color: match options {
+                        None => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
+                            "NonColorable" => player_colors.get_noncolorable(),
+                            _ => player_colors.get_colorable(),
+                        },
+                        Some((tile_color, player_marker)) => {
+                            player_colors.get_color(player_marker.id())
+                        }
+                    },
+                    hollow: false,
+                    cap: Default::default(),
+                    thickness: TILE_OUTLINE,
+                    thickness_type: ThicknessType::World,
+                    corner_radii: Default::default(),
+                    render_layers: None,
+                    alpha_mode: AlphaMode::Blend,
+                    disable_laa: false,
+                    instance_id: 0,
+                    canvas: None,
+                    texture: None,
+                    alignment: Default::default(),
+                    roundness: 0.0,
+                    pipeline: ShapePipelineType::Shape2d,
+                },
+                Vec2 {
+                    x: TILE_SIZE,
+                    y: TILE_SIZE,
+                },
+            ))
+            .insert(Animator::new(tween))
+            .insert(Animator::new(transform_tween))
+            .id();
+
+        commands.entity(entity).remove::<OldTileState>();
+        commands.entity(entity).push_children(&[child]);
         commands.entity(entity).remove::<DrawTile>();
     }
 }
@@ -95,7 +212,6 @@ pub fn draw_tiles(
 pub fn draw_objects(
     game_info: Res<GameData>,
     tile_query: Query<(Entity, &DrawObject, &ObjectInfo, &ObjectGridPosition)>,
-    font_handle: Res<FontAssets>,
     mut commands: Commands,
 ) {
     for (entity, _, object_info, tile_pos) in tile_query.iter() {
@@ -104,45 +220,47 @@ pub fn draw_objects(
         let card_y = (tile_pos.tile_position.y as f32 * (TILE_SIZE + TILE_GAP))
             - ((game_info.map_size_y as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
 
-        let mut spawn_point: Vec3 = Vec3 {
+        let spawn_point: Vec3 = Vec3 {
             x: card_x,
             y: card_y,
             z: 3.0,
         };
 
-        commands.spawn(bevy_vector_shapes::shapes::ShapeBundle::rect(
-            &ShapeConfig {
-                transform: Transform {
-                    translation: spawn_point,
-                    rotation: Default::default(),
-                    scale: Vec3 {
-                        x: 1.0,
-                        y: 1.0,
-                        z: 1.0,
+        let child = commands
+            .spawn(bevy_vector_shapes::shapes::ShapeBundle::rect(
+                &ShapeConfig {
+                    transform: Transform {
+                        translation: spawn_point,
+                        rotation: Default::default(),
+                        scale: Vec3 {
+                            x: 1.0,
+                            y: 1.0,
+                            z: 1.0,
+                        },
                     },
+                    color: Color::BLUE,
+                    thickness: 0.0,
+                    thickness_type: Default::default(),
+                    alignment: Default::default(),
+                    hollow: false,
+                    cap: Default::default(),
+                    roundness: 0.0,
+                    corner_radii: Vec4::new(0.0, 0.0, 0.0, 0.0),
+                    render_layers: None,
+                    alpha_mode: Default::default(),
+                    disable_laa: false,
+                    instance_id: 0,
+                    canvas: None,
+                    texture: None,
+                    pipeline: ShapePipelineType::Shape2d,
                 },
-                color: Color::BLUE,
-                thickness: 0.0,
-                thickness_type: Default::default(),
-                alignment: Default::default(),
-                hollow: false,
-                cap: Default::default(),
-                roundness: 0.0,
-                corner_radii: Vec4::new(4.0, 4.0, 4.0, 4.0),
-                render_layers: None,
-                alpha_mode: Default::default(),
-                disable_laa: false,
-                instance_id: 0,
-                canvas: None,
-                texture: None,
-                pipeline: ShapePipelineType::Shape2d,
-            },
-            Vec2 {
-                x: OBJECT_SIZE,
-                y: OBJECT_SIZE,
-            },
-        ));
-
+                Vec2 {
+                    x: OBJECT_SIZE,
+                    y: OBJECT_SIZE,
+                },
+            ))
+            .id();
+        commands.entity(entity).push_children(&[child]);
         commands.entity(entity).remove::<DrawObject>();
     }
 }

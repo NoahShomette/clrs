@@ -7,6 +7,7 @@ use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
 use clrs::GamePlugin;
 use std::io::Cursor;
+use bevy_tweening::TweeningPlugin;
 use bevy_vector_shapes::Shape2dPlugin;
 use winit::window::Icon;
 
@@ -26,6 +27,7 @@ fn main() {
             ..default()
         }))
         .add_plugin(ns_defaults::camera::CameraPlugin)
+        .add_plugin(TweeningPlugin)
         .add_plugin(Shape2dPlugin::default())
         .add_plugin(GamePlugin)
         .add_system(set_window_icon.on_startup())
