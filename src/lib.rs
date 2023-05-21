@@ -30,9 +30,8 @@ use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ggf::BggfDefaultPlugins;
 
-// This example game uses States to separate logic
-// See https://bevy-cheatbook.github.io/programming/states.html
-// Or https://github.com/bevyengine/bevy/blob/main/examples/ecs/state.rs
+/// Generic Game State
+/// Update with a separate Pause state eventually
 #[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash)]
 pub enum GameState {
     // During the loading State the LoadingPlugin will load our assets
@@ -46,6 +45,17 @@ pub enum GameState {
     Ended,
     // Here the menu is drawn and waiting for player interaction
     Menu,
+}
+
+/// testing
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
+#[system_set(base)]
+pub enum MenuSystemSet {
+    Pre,
+    PreCommandFlush,
+    Main,
+    PostCommandFlush,
+    Post,
 }
 
 pub struct GamePlugin;

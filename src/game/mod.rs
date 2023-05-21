@@ -17,7 +17,7 @@ use crate::color_system::{
     handle_color_conflict_guarantees, handle_color_conflicts, update_color_conflicts,
     ColorConflictEvent, ColorConflictGuarantees, ColorConflicts, PlayerTileChangedCount, TileColor,
 };
-use crate::game::end_game::{check_game_ended, update_game_end_state};
+use crate::game::end_game::{check_game_ended, cleanup_game, update_game_end_state};
 use crate::game::state::update_game_state;
 use crate::level_loader::{LevelHandle, Levels};
 use crate::mapping::map::MapCommandsExt;
@@ -41,29 +41,33 @@ use bevy_ggf::object::{
     Object, ObjectClass, ObjectGridPosition, ObjectGroup, ObjectInfo, ObjectType,
 };
 use bevy_ggf::player::{Player, PlayerMarker};
+use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 
 pub struct GameCorePlugin;
 
 impl Plugin for GameCorePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(setup_game_resource.in_schedule(OnEnter(GameState::Menu)));
-        app.add_system(start_game.in_schedule(OnEnter(GameState::Playing)));
+        app.add_system(setup_game_resource.in_schedule(OnEnter(GameState::Menu)))
+            .add_system(start_game.in_schedule(OnEnter(GameState::Playing)))
+            .add_system(cleanup_game.in_schedule(OnEnter(GameState::Menu)))
+            .add_system(check_game_ended.in_set(OnUpdate(GameState::Playing)))
+            .add_system(check_game_ended.in_set(OnUpdate(GameState::Paused)))
+            .add_system(
+                simulate_game
+                    .run_if(in_state(GameState::Playing))
+                    .in_schedule(CoreSchedule::FixedUpdate),
+            )
+            .add_system(
+                update_game_state
+                    .run_if(in_state(GameState::Playing))
+                    .after(simulate_game)
+                    .in_schedule(CoreSchedule::FixedUpdate),
+            );
 
-        app.add_system(check_game_ended.in_set(OnUpdate(GameState::Playing)));
-        app.add_system(check_game_ended.in_set(OnUpdate(GameState::Paused)));
-
-        app.add_system(
-            simulate_game
-                .run_if(in_state(GameState::Playing))
-                .in_schedule(CoreSchedule::FixedUpdate),
-        );
-        app.add_system(
-            update_game_state
-                .run_if(in_state(GameState::Playing))
-                .after(simulate_game)
-                .in_schedule(CoreSchedule::FixedUpdate),
-        );
         app.insert_resource(FixedTime::new_from_secs(0.01));
+
+        app.register_type::<GameBuildSettings>();
+        app.add_plugin(ResourceInspectorPlugin::<GameBuildSettings>::default());
     }
 }
 
@@ -89,7 +93,7 @@ pub fn simulate_game(world: &mut World) {
     });
 }
 
-#[derive(Clone, Eq, Debug, PartialEq, Resource)]
+#[derive(Reflect, Clone, Eq, Debug, PartialEq, Resource)]
 pub struct GameBuildSettings {
     pub map_size: u32,
     pub enemy_count: usize,
@@ -159,7 +163,7 @@ impl FromWorld for GameBuildSettings {
         world.resource_scope(|world, maps: Mut<LevelHandle>| {
             world.resource_scope(|world, assets: Mut<Assets<Levels>>| {
                 return Self {
-                    map_size: 100,
+                    map_size: 30,
                     enemy_count: 1,
                     map_type: 0,
                     max_map: assets.get(&maps.levels).unwrap().levels.len(),

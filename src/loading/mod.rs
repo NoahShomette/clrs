@@ -36,6 +36,8 @@ impl Plugin for LoadingPlugin {
 pub struct FontAssets {
     #[asset(path = "fonts/FiraSans-Bold.ttf")]
     pub fira_sans: Handle<Font>,
+    #[asset(path = "fonts/abaddon_bold.ttf")]
+    pub abaddon_bold: Handle<Font>,
 }
 
 #[derive(AssetCollection, Resource)]

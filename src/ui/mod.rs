@@ -1,18 +1,26 @@
+mod game;
 mod menu;
 
 use crate::loading::colors_loader::{PalettesAssets, PalettesHandle};
-use crate::ui::menu::{handle_menu, setup_menu};
+use crate::ui::game::GameUiPlugin;
+use crate::ui::menu::MenuPlugin;
 use crate::GameState;
 use bevy::prelude::*;
+use bevy_tweening::lens::TransformScaleLens;
+use bevy_tweening::{Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween};
+use std::time::Duration;
 
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(setup_menu.in_schedule(OnEnter(GameState::Menu)))
-            .add_system(handle_menu.in_set(OnUpdate(GameState::Menu)));
+        app.add_plugin(MenuPlugin).add_plugin(GameUiPlugin);
+        app.add_system(handle_button_visuals.in_set(OnUpdate(GameState::Menu)));
     }
 }
+
+#[derive(Component)]
+pub struct DisabledButton;
 
 #[derive(Default)]
 pub struct MenuNavigation(pub u32);
@@ -27,7 +35,7 @@ pub struct PlayerColors {
 impl FromWorld for PlayerColors {
     fn from_world(world: &mut World) -> Self {
         let cell = world.cell();
-        let mut palettes = cell
+        let palettes = cell
             .get_resource_mut::<Assets<PalettesAssets>>()
             .expect("Failed to get Assets<PalettesAssets>");
         let palettes_handle = cell
@@ -48,79 +56,6 @@ impl FromWorld for PlayerColors {
         player_colors
     }
 }
-
-/*
-impl Default for PlayerColors {
-    fn default() -> Self {
-        Self {
-            palette_index: 0,
-            current_palette: Palette {
-                player_colors: vec![
-                    String::from("d3bf77"),
-                    String::from("657a85"),
-                    String::from("5e9d6a"),
-                    String::from("45344a"),
-                ],
-                noncolorable_tile: "000000".to_string(),
-                colorable_tile: "272135".to_string(),
-            },
-            palettes: vec![
-                Palette {
-                    player_colors: vec![
-                        String::from("d3bf77"),
-                        String::from("657a85"),
-                        String::from("5e9d6a"),
-                        String::from("45344a"),
-                    ],
-                    noncolorable_tile: "000000".to_string(),
-                    colorable_tile: "272135".to_string(),
-                },
-                Palette {
-                    player_colors: vec![
-                        String::from("00177c"),
-                        String::from("84396c"),
-                        String::from("598344"),
-                        String::from("d09071"),
-                    ],
-                    noncolorable_tile: "000000".to_string(),
-                    colorable_tile: "272135".to_string(),
-                },
-                Palette {
-                    player_colors: vec![
-                        String::from("425e9a"),
-                        String::from("39a441"),
-                        String::from("de9139"),
-                        String::from("e6cb47"),
-                    ],
-                    noncolorable_tile: "000000".to_string(),
-                    colorable_tile: "272135".to_string(),
-                },
-                Palette {
-                    player_colors: vec![
-                        String::from("0392cf"),
-                        String::from("ee4035"),
-                        String::from("7bc043"),
-                        String::from("f37736"),
-                    ],
-                    noncolorable_tile: "000000".to_string(),
-                    colorable_tile: "fdf498".to_string(),
-                },
-                Palette {
-                    player_colors: vec![
-                        String::from("fff200"),
-                        String::from("e500ff"),
-                        String::from("00ddff"),
-                        String::from("000000"),
-                    ],
-                    noncolorable_tile: "000000".to_string(),
-                    colorable_tile: "ffffff".to_string(),
-                },
-            ],
-        }
-    }
-}
-
- */
 
 impl PlayerColors {
     pub fn get_color(&self, player_id: usize) -> Color {
@@ -149,4 +84,86 @@ pub struct Palette {
     pub player_colors: Vec<String>,
     pub noncolorable_tile: String,
     pub colorable_tile: String,
+}
+
+fn handle_button_visuals(
+    player_colors: Option<Res<PlayerColors>>,
+    mut interaction_query: Query<
+        (Entity, &Interaction, &mut BackgroundColor, &Children),
+        (Changed<Interaction>, With<Button>, Without<DisabledButton>),
+    >,
+    mut children_text_color: Query<&mut Text>,
+    mut commands: Commands,
+) {
+    if let Some(player_colors) = player_colors {
+        for (entity, interaction, mut color, children) in &mut interaction_query {
+            match *interaction {
+                Interaction::Clicked => {
+                    let transform_tween = Tween::new(
+                        EaseFunction::QuadraticInOut,
+                        Duration::from_millis(50),
+                        TransformScaleLens {
+                            start: Vec3 {
+                                x: 1.0,
+                                y: 1.0,
+                                z: 1.0,
+                            },
+
+                            end: Vec3 {
+                                x: 1.4,
+                                y: 1.0,
+                                z: 1.0,
+                            },
+                        },
+                    )
+                    .with_repeat_count(RepeatCount::Finite(2))
+                    .with_repeat_strategy(RepeatStrategy::MirroredRepeat);
+
+                    commands
+                        .entity(entity)
+                        .insert(Animator::new(transform_tween));
+                }
+                Interaction::Hovered => {
+                    let transform_tween = Tween::new(
+                        EaseFunction::QuadraticInOut,
+                        Duration::from_millis(100),
+                        TransformScaleLens {
+                            start: Vec3 {
+                                x: 1.0,
+                                y: 1.0,
+                                z: 1.0,
+                            },
+
+                            end: Vec3 {
+                                x: 1.1,
+                                y: 1.1,
+                                z: 1.0,
+                            },
+                        },
+                    )
+                    .with_repeat_count(RepeatCount::Finite(2))
+                    .with_repeat_strategy(RepeatStrategy::MirroredRepeat);
+
+                    commands
+                        .entity(entity)
+                        .insert(Animator::new(transform_tween));
+
+                    *color = BackgroundColor::from(player_colors.get_color(0));
+                    for &child in children.iter() {
+                        if let Ok(mut text) = children_text_color.get_mut(child) {
+                            text.sections[0].style.color = Color::BLACK;
+                        }
+                    }
+                }
+                Interaction::None => {
+                    *color = BackgroundColor::from(Color::GRAY);
+                    for &child in children.iter() {
+                        if let Ok(mut text) = children_text_color.get_mut(child) {
+                            text.sections[0].style.color = Color::BLACK;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

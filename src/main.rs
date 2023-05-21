@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy::window::{PrimaryWindow, WindowMode};
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
+use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
 use bevy_tweening::TweeningPlugin;
 use bevy_vector_shapes::Shape2dPlugin;
 use clrs::GamePlugin;
@@ -35,6 +36,7 @@ fn main() {
         .add_plugin(Shape2dPlugin::default())
         .add_plugin(GamePlugin)
         .add_system(set_window_icon.on_startup())
+        .add_plugin(WorldInspectorPlugin::new())
         .run();
 }
 

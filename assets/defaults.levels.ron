@@ -1,5 +1,11 @@
 (levels: [
     (
+        name: "Plains",
+        spawn_points: [],
+        tiles: [
+        ],
+    ),
+    (
         name: "Random",
         spawn_points: [],
         tiles: [

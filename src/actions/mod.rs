@@ -89,14 +89,8 @@ fn handle_pause(
 pub fn paused_controls(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
-    game: Res<GameData>,
     mut menu_nav: Local<MenuNavigation>,
     mut next_state: ResMut<NextState<GameState>>,
-    tiles: Query<Entity, With<Tile>>,
-    objects: Query<Entity, With<Object>>,
-    players: Query<Entity, With<Player>>,
-    player_marker: Query<Entity, With<PlayerMarker>>,
-    player_colors: Res<PlayerColors>,
 ) {
     /*
     let mut term = term_query.single_mut();
@@ -149,52 +143,15 @@ pub fn paused_controls(
         || keyboard_input.just_pressed(KeyCode::Insert)
     {
         next_state.set(GameState::Menu);
-
-        for entity in tiles.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in objects.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in players.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in player_marker.iter() {
-            commands.entity(entity).despawn();
-        }
-
-        commands.remove_resource::<Game>();
-        commands.init_resource::<GameBuildSettings>();
     }
 }
 
 pub fn ended_controls(
-    mut commands: Commands,
     mut next_state: ResMut<NextState<GameState>>,
     keyboard_input: Res<Input<KeyCode>>,
-    tiles: Query<Entity, With<Tile>>,
-    objects: Query<Entity, With<Object>>,
-    players: Query<Entity, With<Player>>,
-    player_marker: Query<Entity, With<PlayerMarker>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         next_state.set(GameState::Menu);
-
-        for entity in tiles.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in objects.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in players.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in player_marker.iter() {
-            commands.entity(entity).despawn();
-        }
-
-        commands.remove_resource::<Game>();
-        commands.init_resource::<GameBuildSettings>();
     }
 }
 

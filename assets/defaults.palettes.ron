@@ -41,11 +41,11 @@
     ),
     Palette (
         player_colors: [
-            "fff200",
-            "e500ff",
-            "00ddff",
-            "000000",
+            "e4b714",
+            "d41ae9",
+            "1dd1ed",
+            "db1e1e",
         ],
         noncolorable_tile: "000000",
-        colorable_tile: "ffffff",
+        colorable_tile: "d9d5d5",
     ), ])

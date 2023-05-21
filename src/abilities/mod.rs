@@ -132,6 +132,8 @@ impl GameCommand for SpawnAbility {
                 let Some((player_marker, _, _)) = tiles
                     .iter()
                     .find(|(_, id, _)| id == &&self.target_tile_pos)else {
+                    
+                    world.insert_resource(game_data);
                     return Err("Failed to Find Fortify Tile Pos".parse().unwrap())
                 };
 

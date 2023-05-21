@@ -1,14 +1,47 @@
+use crate::game::GameBuildSettings;
 use crate::GameState;
-use bevy::prelude::{Commands, Mut, NextState, Query, Res, ResMut, Resource, With};
+use bevy::core_pipeline::clear_color::ClearColorConfig;
+use bevy::prelude::{
+    Camera, Camera2d, ClearColor, Color, Commands, DespawnRecursiveExt, Entity, Mut, NextState,
+    OrthographicProjection, Query, Res, ResMut, Resource, With,
+};
 use bevy::utils::HashMap;
+use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::game_core::Game;
 use bevy_ggf::mapping::tiles::Tile;
-use bevy_ggf::player::PlayerMarker;
+use bevy_ggf::object::{Object, ObjectGridPosition};
+use bevy_ggf::player::{Player, PlayerMarker};
+use bevy_vector_shapes::prelude::Canvas;
+use image::imageops::tile;
 
 #[derive(Default, Resource)]
 pub struct GameEnded {
     pub player_won: bool,
     pub winning_id: usize,
+}
+
+pub fn cleanup_game(
+    mut tiles: Query<Entity, With<TilePos>>,
+    mut objects: Query<Entity, With<Object>>,
+    mut players: Query<Entity, With<Player>>,
+    mut player_zero: Query<Entity, With<PlayerMarker>>,
+    mut commands: Commands,
+) {
+    for tile in tiles.iter() {
+        commands.entity(tile).despawn_recursive();
+    }
+    for object in objects.iter() {
+        commands.entity(object).despawn_recursive();
+    }
+    for player in players.iter() {
+        commands.entity(player).despawn_recursive();
+    }
+    for player_zero in player_zero.iter() {
+        commands.entity(player_zero).despawn_recursive();
+    }
+
+    commands.remove_resource::<Game>();
+    commands.init_resource::<GameBuildSettings>();
 }
 
 pub fn check_game_ended(
