@@ -48,4 +48,14 @@
         ],
         noncolorable_tile: "000000",
         colorable_tile: "d9d5d5",
-    ), ])
+    ),
+    Palette (
+        player_colors: [
+            "ffa300",
+            "ff77a8",
+            "29adff",
+            "008751",
+        ],
+        noncolorable_tile: "000000",
+        colorable_tile: "1d2b53",
+    ),])

@@ -37,6 +37,8 @@ pub enum GameState {
     // During the loading State the LoadingPlugin will load our assets
     #[default]
     Loading,
+    // Splashscreen state
+    Splash,
     // During this State the actual game logic is executed
     Playing,
     /// Game is paused and will return to playing, quit, or menu

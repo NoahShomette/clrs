@@ -83,6 +83,7 @@ fn handle_pause(
         }
         GameState::Menu => {}
         GameState::Ended => {}
+        _ => {}
     }
 }
 

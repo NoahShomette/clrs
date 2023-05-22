@@ -473,6 +473,7 @@ dependencies = [
  "bevy_reflect",
  "bevy_transform",
  "bevy_utils",
+ "oboe",
  "parking_lot",
  "rodio",
 ]
@@ -977,6 +978,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_splash_screen"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa3fe91e25ce3593c333ad616fd433757a649c53a7e605a2bf915c5cfe94a4bc"
+dependencies = [
+ "bevy",
+ "bevy_tweening",
+]
+
+[[package]]
 name = "bevy_sprite"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1071,8 +1082,7 @@ dependencies = [
 [[package]]
 name = "bevy_tweening"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7adaf4294484caea3707d280198ad06dd53b9e9adbb0816618c7edce11c990d6"
+source = "git+https://github.com/sibsibsib/bevy_tweening?branch=mirrored_repeat_fix#cbd857e28158973750c864cad3ef0a79b39f744f"
 dependencies = [
  "bevy",
  "interpolation",
@@ -1393,6 +1403,7 @@ dependencies = [
  "bevy_ecs_tilemap",
  "bevy_ggf 0.1.1 (git+https://github.com/NoahShomette/bevy_ggf.git?branch=dev)",
  "bevy_kira_audio",
+ "bevy_splash_screen",
  "bevy_tweening",
  "bevy_vector_shapes",
  "embed-resource",
@@ -2442,6 +2453,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "lewton"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "777b48df9aaab155475a83a7df3070395ea1ac6902f5cd062b8f2b028075c030"
+dependencies = [
+ "byteorder",
+ "ogg",
+ "tinyvec",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.144"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2927,6 +2949,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ogg"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6951b4e8bf21c8193da321bcce9c9dd2e13c858fe078bf9054a288b419ae5d6e"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3240,6 +3271,7 @@ checksum = "bdf1d4dea18dff2e9eb6dca123724f8b60ef44ad74a9ad283cdfe025df7e73fa"
 dependencies = [
  "cpal",
  "hound",
+ "lewton",
 ]
 
 [[package]]

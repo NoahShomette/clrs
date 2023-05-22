@@ -67,7 +67,6 @@ impl Plugin for GameCorePlugin {
         app.insert_resource(FixedTime::new_from_secs(0.01));
 
         app.register_type::<GameBuildSettings>();
-        app.add_plugin(ResourceInspectorPlugin::<GameBuildSettings>::default());
     }
 }
 
@@ -99,6 +98,12 @@ pub struct GameBuildSettings {
     pub enemy_count: usize,
     pub map_type: usize,
     pub max_map: usize,
+    pub level_sizes: LevelsSizes,
+}
+
+#[derive(Reflect, Clone, Eq, Debug, PartialEq)]
+pub struct LevelsSizes {
+    pub lists: HashMap<usize, (u32, u32)>,
 }
 
 impl GameBuildSettings {
@@ -151,10 +156,17 @@ impl GameBuildSettings {
         if self.map_type > self.max_map - 1 {
             self.map_type = self.max_map - 1;
         }
+
+        if self.map_type > 1 {
+            self.map_size = self.level_sizes.lists[&self.map_type].0;
+        }
     }
 
     pub fn prev_map(&mut self) {
         self.map_type = self.map_type.saturating_sub(1);
+        if self.map_type > 1 {
+            self.map_size = self.level_sizes.lists[&self.map_type].0;
+        }
     }
 }
 
@@ -162,11 +174,24 @@ impl FromWorld for GameBuildSettings {
     fn from_world(world: &mut World) -> Self {
         world.resource_scope(|world, maps: Mut<LevelHandle>| {
             world.resource_scope(|world, assets: Mut<Assets<Levels>>| {
+                let mut levels_sizes = LevelsSizes {
+                    lists: Default::default(),
+                };
+
+                for (i, level) in assets.get(&maps.levels).unwrap().levels.iter().enumerate() {
+                    if i > 1 {
+                        levels_sizes
+                            .lists
+                            .insert(i, (level.tiles[0].len() as u32, level.tiles.len() as u32));
+                    }
+                }
+
                 return Self {
                     map_size: 30,
                     enemy_count: 1,
                     map_type: 0,
                     max_map: assets.get(&maps.levels).unwrap().levels.len(),
+                    level_sizes: levels_sizes,
                 };
             })
         })
@@ -355,21 +380,9 @@ pub fn start_game(world: &mut World) {
     )];
 
     let mut game_commands = GameCommands::new();
-    let map_size = match game_build_settings.map_type {
-        0 => TilemapSize {
-            x: game_build_settings.map_size,
-            y: game_build_settings.map_size,
-        },
-        _ => world.resource_scope(|world, maps: Mut<LevelHandle>| {
-            world.resource_scope(|world, assets: Mut<Assets<Levels>>| {
-                let map_info =
-                    &assets.get(&maps.levels).unwrap().levels[game_build_settings.map_type];
-                TilemapSize {
-                    x: map_info.tiles[0].len() as u32,
-                    y: map_info.tiles.len() as u32,
-                }
-            })
-        }),
+    let map_size = TilemapSize {
+        x: game_build_settings.map_size,
+        y: game_build_settings.map_size,
     };
     game_data.map_size_x = map_size.x;
     game_data.map_size_y = map_size.y;

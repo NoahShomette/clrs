@@ -12,11 +12,8 @@ pub struct CameraPlugin;
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CursorWorldPos>();
-        app.add_systems(
-            (spawn_camera, apply_system_buffers, setup_camera_menu)
-                .chain()
-                .in_schedule(OnEnter(GameState::Menu)),
-        );
+        app.add_system(spawn_camera.in_schedule(OnEnter(GameState::Splash)));
+        app.add_system(setup_camera_menu.in_schedule(OnEnter(GameState::Menu)));
         app.add_systems(
             (apply_system_buffers, setup_camera_playing)
                 .chain()
