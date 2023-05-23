@@ -263,7 +263,7 @@ fn setup_menu(
                                 background_color: Color::DARK_GRAY.into(),
                                 ..default()
                             });
-                            game_button(
+                            let pulser_button = game_button(
                                 parent,
                                 &font_assets,
                                 GameUiThing,
@@ -271,6 +271,7 @@ fn setup_menu(
                                 "Pulser",
                                 texture_assets.pulser.clone(),
                             );
+                            commands.entity(pulser_button).insert(NewSelectedButton);
                             game_button(
                                 parent,
                                 &font_assets,
@@ -320,7 +321,7 @@ fn setup_menu(
                                 background_color: Color::DARK_GRAY.into(),
                                 ..default()
                             });
-                            game_button(
+                            let nuke_entity = game_button(
                                 parent,
                                 &font_assets,
                                 GameUiThing,
@@ -328,6 +329,8 @@ fn setup_menu(
                                 "Nuke",
                                 texture_assets.nuke.clone(),
                             );
+                            commands.entity(nuke_entity).insert(NewSelectedButton);
+
                             game_button(
                                 parent,
                                 &font_assets,
@@ -539,18 +542,19 @@ fn handle_selected_button(
     >,
 ) {
     if !building_changed.is_empty() {
+        println!("building changed is full");
         for (button, option_old_selection, option_nsb, mut interaction) in
             building_buttons.iter_mut()
         {
             if let Some(_) = option_old_selection {
                 commands.entity(button).remove::<SelectedButton>();
-                let _ = interaction.deref_mut();
+                *interaction = Interaction::None;
             }
 
             if let Some(_) = option_nsb {
                 commands.entity(button).insert(SelectedButton);
                 commands.entity(button).remove::<NewSelectedButton>();
-                let _ = interaction.deref_mut();
+                *interaction = Interaction::None;
             }
         }
     }
@@ -561,13 +565,13 @@ fn handle_selected_button(
         {
             if let Some(_) = option_old_selection {
                 commands.entity(button).remove::<SelectedButton>();
-                let _ = interaction.deref_mut();
+                *interaction = Interaction::None;
             }
 
             if let Some(_) = option_nsb {
                 commands.entity(button).insert(SelectedButton);
                 commands.entity(button).remove::<NewSelectedButton>();
-                let _ = interaction.deref_mut();
+                *interaction = Interaction::None;
             }
         }
     }
