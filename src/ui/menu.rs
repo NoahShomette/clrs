@@ -87,13 +87,16 @@ struct ColorSwatch(u8);
 #[derive(Component)]
 struct UpdateMapSizeButtonColors;
 
+#[derive(Component)]
+struct SettingsCloseButton;
+
 pub fn setup_menu(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
     player_colors: Res<PlayerColors>,
-    mut game_build_settings: ResMut<GameBuildSettings>,
-    mut level_handles: Res<LevelHandle>,
-    mut level_assets: Res<Assets<Levels>>,
+    game_build_settings: ResMut<GameBuildSettings>,
+    level_handles: Res<LevelHandle>,
+    level_assets: Res<Assets<Levels>>,
 ) {
     //root node for the entire main menu
     commands
@@ -562,7 +565,7 @@ fn click_play_button(
         }
 
         if let Some(_) = option_sb {
-            modal_panel(MenuUiThing, true, &mut commands, &font_assets);
+            modal_panel(MenuUiThing, true, None::<SettingsCloseButton>, &mut commands, &font_assets);
             //TODO: Add settings after we make the pop up template
         }
 

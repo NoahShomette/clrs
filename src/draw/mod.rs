@@ -1,6 +1,5 @@
 ﻿pub mod draw;
 
-use crate::actions::paused_controls;
 use crate::draw::draw::{draw_objects, draw_tile_backgrounds, draw_tiles, TILE_GAP, TILE_SIZE};
 use crate::GameState;
 use bevy::app::App;
@@ -18,7 +17,6 @@ impl Plugin for DrawPlugin {
         );
         app.add_systems(
             (draw_tile_backgrounds, draw_tiles, draw_objects)
-                .before(paused_controls)
                 .in_set(OnUpdate(GameState::Paused)),
         );
         app.add_systems(

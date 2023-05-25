@@ -1,37 +1,42 @@
+mod end_game;
 mod game;
 mod menu;
+mod pause;
 
-use crate::game::GameBuildSettings;
 use crate::loading::colors_loader::{PalettesAssets, PalettesHandle};
 use crate::loading::FontAssets;
+use crate::ui::end_game::EndGameUiPlugin;
 use crate::ui::game::GameUiPlugin;
 use crate::ui::menu::MenuPlugin;
-use crate::GameState;
+use crate::ui::pause::PauseUiPlugin;
 use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
 use bevy::window::PrimaryWindow;
-use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
 use bevy_tweening::lens::TransformScaleLens;
 use bevy_tweening::{Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween};
+use std::thread::spawn;
 use std::time::Duration;
 
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(MenuPlugin).add_plugin(GameUiPlugin);
-        app.add_system(handle_button_visuals.in_set(OnUpdate(GameState::Menu)));
-        app.add_system(scale);
+        app.add_plugin(MenuPlugin)
+            .add_plugin(GameUiPlugin)
+            .add_plugin(PauseUiPlugin)
+            .add_plugin(EndGameUiPlugin);
 
-        app.add_system(modal_button_interaction);
+        app.add_systems((handle_button_visuals, scale, modal_button_interaction));
 
         /*
         app.add_plugin(ResourceInspectorPlugin::<GameBuildSettings>::default())
             .add_plugin(WorldInspectorPlugin::new());
-
          */
     }
 }
+
+#[derive(Component)]
+pub struct UpdateBackgroundWithCurrentPlayerColor;
 
 #[derive(Component)]
 pub struct DisabledButton;
@@ -245,13 +250,17 @@ struct ModalCloseButtonMarker(Entity);
 fn modal_panel<T>(
     menu_type: T,
     with_close_button: bool,
+    close_button_bundle: Option<impl Bundle>,
     mut commands: &mut Commands,
     font_assets: &Res<FontAssets>,
 ) -> Entity
 where
     T: Component,
 {
-    //root node for the entire main menu
+    //we assign it to a basic entity and then reassign it later
+    let mut inside_entity = Entity::from_raw(0);
+    //root node for the entire modal
+
     commands
         .spawn(NodeBundle {
             style: Style {
@@ -261,56 +270,98 @@ where
                 position_type: PositionType::Absolute,
                 ..default()
             },
-            background_color: Color::BLACK.with_a(0.3).into(),
+            background_color: Color::BLACK.with_a(0.5).into(),
             focus_policy: FocusPolicy::Block,
             ..default()
         })
         .insert(menu_type)
         .with_children(|master_parent| {
             let parent_entity = master_parent.parent_entity();
-            //root node for the main controls wrapping the entire control section on the left side
+            //root node for the inside panel
             master_parent
                 .spawn(NodeBundle {
                     style: Style {
                         size: Size::new(Val::Percent(60.0), Val::Percent(80.0)),
-                        justify_content: JustifyContent::End,
-                        align_items: AlignItems::Start,
+                        justify_content: JustifyContent::Start,
+                        align_items: AlignItems::Center,
                         position_type: PositionType::Relative,
-                        flex_direction: FlexDirection::Row,
+                        flex_direction: FlexDirection::Column,
                         ..default()
                     },
-                    background_color: Color::rgb(0.15, 0.15, 0.15).into(),
+                    background_color: Color::rgba(0.10, 0.10, 0.10, 1.0).into(),
                     ..default()
                 })
                 .with_children(|parent| {
                     if with_close_button {
+                        // Top option close button
                         parent
-                            .spawn(ButtonBundle {
+                            .spawn(NodeBundle {
                                 style: Style {
-                                    size: Size::new(Val::Auto, Val::Px(50.0)),
-                                    margin: UiRect::all(Val::Px(10.0)),
-                                    padding: UiRect::all(Val::Px(10.0)),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    ..Default::default()
+                                    size: Size::new(Val::Percent(100.0), Val::Percent(10.0)),
+                                    justify_content: JustifyContent::End,
+                                    align_items: AlignItems::Start,
+                                    position_type: PositionType::Relative,
+                                    flex_direction: FlexDirection::Row,
+                                    ..default()
                                 },
-                                background_color: BackgroundColor::from(Color::GRAY),
-                                ..Default::default()
+                                background_color: Color::rgba(0.0, 0.0, 0.0, 0.0).into(),
+                                ..default()
                             })
-                            .insert(ModalCloseButtonMarker(parent_entity))
-                            .insert(BasicButton)
                             .with_children(|parent| {
-                                parent.spawn(TextBundle::from_section(
-                                    "CLOSE",
-                                    TextStyle {
-                                        font: font_assets.fira_sans.clone(),
-                                        font_size: 40.0,
-                                        color: Color::BLACK,
-                                    },
-                                ));
+                                let mut button_entity = parent.spawn_empty();
+                                button_entity
+                                    .insert(ButtonBundle {
+                                        style: Style {
+                                            size: Size::new(Val::Auto, Val::Px(50.0)),
+                                            margin: UiRect::new(
+                                                Val::Px(10.0),
+                                                Val::Px(20.0),
+                                                Val::Px(20.0),
+                                                Val::Px(10.0),
+                                            ),
+                                            padding: UiRect::all(Val::Px(10.0)),
+                                            justify_content: JustifyContent::Center,
+                                            align_items: AlignItems::Center,
+                                            ..Default::default()
+                                        },
+                                        background_color: BackgroundColor::from(Color::GRAY),
+                                        ..Default::default()
+                                    })
+                                    .insert(ModalCloseButtonMarker(parent_entity))
+                                    .insert(BasicButton)
+                                    .with_children(|parent| {
+                                        parent.spawn(TextBundle::from_section(
+                                            "CLOSE",
+                                            TextStyle {
+                                                font: font_assets.fira_sans.clone(),
+                                                font_size: 40.0,
+                                                color: Color::BLACK,
+                                            },
+                                        ));
+                                    });
+                                if let Some(bundle) = close_button_bundle {
+                                    button_entity.insert(bundle);
+                                }
                             });
                     }
+
+                    inside_entity = parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                                margin: UiRect::all(Val::Px(10.0)),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                position_type: PositionType::Relative,
+                                flex_direction: FlexDirection::Column,
+                                ..default()
+                            },
+                            background_color: Color::rgba(0.0, 0.0, 0.0, 0.0).into(),
+                            ..default()
+                        })
+                        .id();
                 });
-        })
-        .id()
+        });
+
+    inside_entity
 }

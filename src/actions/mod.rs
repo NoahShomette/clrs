@@ -21,8 +21,6 @@ pub struct ActionsPlugin;
 impl Plugin for ActionsPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(update_actions.in_set(OnUpdate(GameState::Playing)));
-        app.add_system(paused_controls.in_set(OnUpdate(GameState::Paused)));
-        app.add_system(ended_controls.in_set(OnUpdate(GameState::Ended)));
         app.add_system(handle_pause);
 
         app.add_system(
@@ -84,75 +82,6 @@ fn handle_pause(
         GameState::Menu => {}
         GameState::Ended => {}
         _ => {}
-    }
-}
-
-pub fn paused_controls(
-    mut commands: Commands,
-    keyboard_input: Res<Input<KeyCode>>,
-    mut menu_nav: Local<MenuNavigation>,
-    mut next_state: ResMut<NextState<GameState>>,
-) {
-    /*
-    let mut term = term_query.single_mut();
-    let term_size = term.size();
-
-    term.put_string([0, term_size.y - 3], "PLAY".fg(Color::WHITE));
-    term.put_string([0, term_size.y - 5], "MENU".fg(Color::WHITE));
-
-    term.put_string(
-        [
-            (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2),
-            game.map_size_y + (BORDER_PADDING_TOTAL / 2) + 6,
-        ],
-        "!!! PAUSED !!!".fg(player_colors.get_color(0)),
-    );
-    let max_nav = 2;
-
-    if menu_nav.0 == 0 {
-        term.put_string([0, term_size.y - 3], "PLAY".fg(player_colors.get_color(0)));
-    }
-    if menu_nav.0 == 1 {
-        term.put_string([0, term_size.y - 5], "MENU".fg(player_colors.get_color(0)));
-    }
-
-     */
-
-    if keyboard_input.just_pressed(KeyCode::Escape) {
-        commands.insert_resource(UnPauseGame);
-    }
-
-    if keyboard_input.just_pressed(KeyCode::W) {
-        menu_nav.0 = menu_nav.0.saturating_sub(1);
-    }
-    if keyboard_input.just_pressed(KeyCode::S) {
-        menu_nav.0 = menu_nav.0.saturating_add(1);
-        let max_nav = 1;
-
-        if menu_nav.0 > max_nav {
-            menu_nav.0 = max_nav;
-        }
-    }
-
-    if menu_nav.0 == 0 && keyboard_input.just_pressed(KeyCode::Space)
-        || keyboard_input.just_pressed(KeyCode::Insert)
-    {
-        next_state.set(GameState::Playing);
-    }
-
-    if menu_nav.0 == 1 && keyboard_input.just_pressed(KeyCode::Space)
-        || keyboard_input.just_pressed(KeyCode::Insert)
-    {
-        next_state.set(GameState::Menu);
-    }
-}
-
-pub fn ended_controls(
-    mut next_state: ResMut<NextState<GameState>>,
-    keyboard_input: Res<Input<KeyCode>>,
-) {
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        next_state.set(GameState::Menu);
     }
 }
 

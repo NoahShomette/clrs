@@ -37,15 +37,14 @@ pub fn spawn_camera(mut commands: Commands, camera_query: Query<&mut Camera, Wit
 }
 
 pub fn setup_camera_menu(
-    mut commands: Commands,
     mut camera_query: Query<(&mut Camera, &mut OrthographicProjection), With<MainCamera>>,
 ) {
-    let (mut camera, mut projection) = camera_query.single_mut();
-    *projection = OrthographicProjection::default();
+    if let Ok((mut camera, mut projection)) = camera_query.get_single_mut(){
+        *projection = OrthographicProjection::default(); 
+    }
 }
 
 pub fn setup_camera_playing(
-    mut commands: Commands,
     mut camera_query: Query<(&mut Camera, &mut OrthographicProjection), With<MainCamera>>,
     game_data: Res<GameData>,
 ) {

@@ -25,6 +25,7 @@ use crate::player::{update_player_points, PlayerPoints};
 use crate::GameState;
 
 use bevy::app::App;
+use bevy::prelude::CoreSet::Update;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize};
@@ -41,7 +42,6 @@ use bevy_ggf::object::{
     Object, ObjectClass, ObjectGridPosition, ObjectGroup, ObjectInfo, ObjectType,
 };
 use bevy_ggf::player::{Player, PlayerMarker};
-use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 
 pub struct GameCorePlugin;
 
@@ -50,8 +50,11 @@ impl Plugin for GameCorePlugin {
         app.add_system(setup_game_resource.in_schedule(OnEnter(GameState::Menu)))
             .add_system(start_game.in_schedule(OnEnter(GameState::Playing)))
             .add_system(cleanup_game.in_schedule(OnEnter(GameState::Menu)))
-            .add_system(check_game_ended.in_set(OnUpdate(GameState::Playing)))
-            .add_system(check_game_ended.in_set(OnUpdate(GameState::Paused)))
+            .add_system(
+                check_game_ended
+                    .in_base_set(Update)
+                    .run_if(in_state(GameState::Playing).or_else(in_state(GameState::Paused))),
+            )
             .add_system(
                 simulate_game
                     .run_if(in_state(GameState::Playing))
@@ -211,10 +214,12 @@ pub struct GameData {
 }
 
 pub fn start_game(world: &mut World) {
-    let mut game_data = GameData::default();
+    // basically checks to see if we are back in menu or not to prevent multiple games forming
     let Some(game_build_settings) = world.remove_resource::<GameBuildSettings>() else {
         return;
     };
+
+    let mut game_data = GameData::default();
 
     let level_data = world.resource_scope(|world, mut level_handles: Mut<LevelHandle>| {
         return world.resource_scope(|world, mut level_assets: Mut<Assets<Levels>>| {

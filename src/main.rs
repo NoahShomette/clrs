@@ -2,12 +2,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy::prelude::*;
-use bevy::window::{PrimaryWindow, WindowMode};
+use bevy::window::{PrimaryWindow};
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
-use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
 use bevy_splash_screen::{SplashAssetType, SplashItem, SplashPlugin, SplashScreen};
-use bevy_tweening::{EaseFunction, TweeningPlugin};
+use bevy_tweening::{EaseFunction};
 use bevy_vector_shapes::Shape2dPlugin;
 use clrs::{GamePlugin, GameState};
 use std::io::Cursor;
