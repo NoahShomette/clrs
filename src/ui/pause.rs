@@ -1,7 +1,7 @@
 ﻿use crate::game::{start_game, GameBuildSettings};
 use crate::loading::level_loader::{LevelHandle, Levels};
 use crate::loading::FontAssets;
-use crate::ui::{modal_panel, BasicButton, DisabledButton, PlayerColors};
+use crate::ui::{modal_panel, BasicButton, DisabledButton, ModalStyle, PlayerColors};
 use crate::GameState;
 use bevy::app::AppExit;
 use bevy::prelude::CoreSet::Update;
@@ -45,8 +45,11 @@ fn setup_menu(
 ) {
     let modal = modal_panel(
         PauseUiThing,
-        true,
-        Some(PauseUiCloseButton),
+        ModalStyle {
+            with_close_button: true,
+            close_button_bundle: Some(PauseUiCloseButton),
+            modal_size: Some(Size::new(Val::Percent(60.0), Val::Percent(80.0))),
+        },
         &mut commands,
         &font_assets,
     );

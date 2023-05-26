@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use std::process::exit;
 use std::thread::spawn;
 
-use crate::ui::{modal_panel, DisabledButton, MenuNavigation, PlayerColors, BasicButton};
+use crate::ui::{modal_panel, BasicButton, DisabledButton, MenuNavigation, ModalStyle, PlayerColors, UpdateBackgroundWithCurrentPlayerColor, UpdateTextColorWithCurrentPlayerColor};
 
 pub struct MenuPlugin;
 
@@ -127,25 +127,27 @@ pub fn setup_menu(
                     ..default()
                 })
                 .with_children(|parent| {
-                    parent.spawn(
-                        TextBundle::from_section(
-                            "CLRS",
-                            TextStyle {
-                                font: font_assets.fira_sans.clone(),
-                                font_size: 100.0,
-                                color: player_colors.get_color(0),
-                            },
+                    parent
+                        .spawn(
+                            TextBundle::from_section(
+                                "CLRS",
+                                TextStyle {
+                                    font: font_assets.fira_sans.clone(),
+                                    font_size: 100.0,
+                                    color: player_colors.get_color(0),
+                                },
+                            )
+                            .with_text_alignment(TextAlignment::Center)
+                            .with_style(Style {
+                                position_type: PositionType::Relative,
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                margin: UiRect::top(Val::Px(75.0)),
+                                size: Size::new(Val::Auto, Val::Auto),
+                                ..default()
+                            }),
                         )
-                        .with_text_alignment(TextAlignment::Center)
-                        .with_style(Style {
-                            position_type: PositionType::Relative,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            margin: UiRect::top(Val::Px(75.0)),
-                            size: Size::new(Val::Auto, Val::Auto),
-                            ..default()
-                        }),
-                    );
+                        .insert(UpdateTextColorWithCurrentPlayerColor);
 
                     // node wrapping the actual buttons
                     parent
@@ -565,7 +567,16 @@ fn click_play_button(
         }
 
         if let Some(_) = option_sb {
-            modal_panel(MenuUiThing, true, None::<SettingsCloseButton>, &mut commands, &font_assets);
+            modal_panel(
+                MenuUiThing,
+                ModalStyle {
+                    with_close_button: true,
+                    close_button_bundle: None::<SettingsCloseButton>,
+                    modal_size: None,
+                },
+                &mut commands,
+                &font_assets,
+            );
             //TODO: Add settings after we make the pop up template
         }
 

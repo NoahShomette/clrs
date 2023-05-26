@@ -72,8 +72,11 @@ fn handle_button_visuals(
             With<GameButton>,
         ),
     >,
-    mut background_color_query: Query<(&mut BackgroundColor, &Children), Without<GameButtonIcon>>,
-    mut children_text_color: Query<&mut Text>,
+    mut background_color_query: Query<
+        (&mut BackgroundColor, &Children),
+        (Without<GameButtonIcon>, With<MainButtonBG>),
+    >,
+    mut children_text_color: Query<&mut Text, With<MainButtonText>>,
     mut commands: Commands,
 ) {
     if let Some(player_colors) = player_colors {
@@ -162,6 +165,12 @@ fn handle_button_visuals(
 
 #[derive(Component)]
 struct GameUiThing;
+
+#[derive(Component)]
+struct MainButtonText;
+
+#[derive(Component)]
+struct MainButtonBG;
 
 #[derive(Component)]
 struct PauseButton;
@@ -336,6 +345,7 @@ fn setup_menu(
                                     (PulserButtonMarker, BuildingButtonsGroupMarker),
                                     "Pulser",
                                     texture_assets.pulser.clone(),
+                                    50,
                                     pulsor_button,
                                 );
 
@@ -346,6 +356,7 @@ fn setup_menu(
                                     (ScatterButtonMarker, BuildingButtonsGroupMarker),
                                     "Scatter",
                                     texture_assets.scatter.clone(),
+                                    50,
                                     scatter_button,
                                 );
                                 game_button(
@@ -355,6 +366,7 @@ fn setup_menu(
                                     (LineButtonMarker, BuildingButtonsGroupMarker),
                                     "Line",
                                     texture_assets.line.clone(),
+                                    50,
                                     line_button,
                                 );
 
@@ -408,6 +420,7 @@ fn setup_menu(
                                     (NukeButtonMarker, AbilitiesButtonsGroupMarker),
                                     "Nuke",
                                     texture_assets.nuke.clone(),
+                                    50,
                                     nuke_button,
                                 );
 
@@ -418,6 +431,7 @@ fn setup_menu(
                                     (FortifyButtonMarker, AbilitiesButtonsGroupMarker),
                                     "Fortify",
                                     texture_assets.fortify.clone(),
+                                    50,
                                     fortify_button,
                                 );
                                 game_button(
@@ -427,6 +441,7 @@ fn setup_menu(
                                     (ExpandButtonMarker, AbilitiesButtonsGroupMarker),
                                     "Expand",
                                     texture_assets.expand.clone(),
+                                    50,
                                     expand_button,
                                 );
                             });
@@ -474,9 +489,6 @@ fn setup_menu(
                                     },
                                 ));
                             });
-
-
-                        
 
                         // node wrapping the actual buttons
                         parent
@@ -832,6 +844,7 @@ fn generate_player_cubes(
 
             for index in 0..10 {
                 let mut color = Color::WHITE;
+
                 if index as f32 / 10.0 < player_tile_count {
                     color = player_colors.get_color(player_id);
                 };
@@ -859,6 +872,7 @@ fn game_button<T, B>(
     button_marker: B,
     button_text: &str,
     button_icon: Handle<Image>,
+    building_cost: u32,
     bundle: Option<impl Bundle>,
 ) -> Entity
 where
@@ -902,27 +916,30 @@ where
                     background_color: Color::GRAY.into(),
                     ..default()
                 })
+                .insert(MainButtonBG)
                 .with_children(|parent| {
-                    parent.spawn(
-                        (TextBundle::from_section(
-                            button_text,
-                            TextStyle {
-                                font: font_assets.fira_sans.clone(),
-                                font_size: 52.0,
-                                color: Color::BLACK,
-                            },
+                    parent
+                        .spawn(
+                            (TextBundle::from_section(
+                                button_text,
+                                TextStyle {
+                                    font: font_assets.fira_sans.clone(),
+                                    font_size: 52.0,
+                                    color: Color::BLACK,
+                                },
+                            )
+                            .with_text_alignment(TextAlignment::Center)
+                            .with_style(Style {
+                                size: Size::new(Val::Auto, Val::Auto),
+                                position_type: PositionType::Relative,
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                margin: UiRect::all(Val::Px(5.0)),
+                                align_self: AlignSelf::Center,
+                                ..default()
+                            })),
                         )
-                        .with_text_alignment(TextAlignment::Center)
-                        .with_style(Style {
-                            size: Size::new(Val::Auto, Val::Auto),
-                            position_type: PositionType::Relative,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            margin: UiRect::all(Val::Px(5.0)),
-                            align_self: AlignSelf::Center,
-                            ..default()
-                        })),
-                    );
+                        .insert(MainButtonText);
                 });
 
             parent
@@ -964,6 +981,62 @@ where
                         },
                         ..default()
                     });
+                });
+
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        size: Size::new(Val::Px(35.0), Val::Px(35.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        position_type: PositionType::Absolute,
+                        flex_direction: FlexDirection::Row,
+                        position: UiRect::new(
+                            Val::Px(35.0),
+                            Val::Px(0.0),
+                            Val::Px(-35.0),
+                            Val::Px(0.0),
+                        ),
+                        ..default()
+                    },
+                    background_color: Color::WHITE.into(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(NodeBundle {
+                        style: Style {
+                            size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                            margin: UiRect::all(Val::Px(5.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            position_type: PositionType::Relative,
+                            ..default()
+                        },
+                        background_color: Color::BLACK.into(),
+                        ..default()
+                    });
+                })
+                .with_children(|parent| {
+                    parent.spawn(
+                        (TextBundle::from_section(
+                            format!("{:?}", building_cost),
+                            TextStyle {
+                                font: font_assets.fira_sans.clone(),
+                                font_size: 24.0,
+                                color: Color::WHITE,
+                            },
+                        )
+                        .with_text_alignment(TextAlignment::Center)
+                        .with_style(Style {
+                            size: Size::new(Val::Auto, Val::Auto),
+                            position_type: PositionType::Relative,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            margin: UiRect::all(Val::Px(5.0)),
+                            align_self: AlignSelf::Center,
+                            ..default()
+                        })),
+                    );
                 });
         });
 
