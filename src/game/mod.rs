@@ -30,8 +30,8 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize};
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
-use bevy_ggf::game_core::runner::GameRunner;
-use bevy_ggf::game_core::{Game, GameBuilder, GameRuntime};
+use bevy_ggf::game_core::runner::{GameRunner, GameRuntime};
+use bevy_ggf::game_core::{Game, GameBuilder};
 use bevy_ggf::mapping::terrain::{TerrainClass, TerrainType};
 use bevy_ggf::mapping::tiles::{
     ObjectStackingClass, StackingClass, TileObjectStacks, TileObjectStacksCount,
@@ -87,7 +87,7 @@ pub fn simulate_game(world: &mut World) {
                 .resource_scope(|world, mut time: Mut<Time>| {
                     time.update();
                 });
-            game_runtime.game_runner.simulate_game(&mut game.game_world);
+            game_runtime.simulate(&mut game.game_world);
             world.resource_scope(|world, mut game_commands: Mut<GameCommands>| {
                 game_commands.execute_buffer(&mut game.game_world);
             });

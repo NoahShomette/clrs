@@ -17,7 +17,7 @@ use bevy_ecs_tilemap::prelude::TileStorage;
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
-use bevy_ggf::mapping::terrain::TileTerrainInfo;
+use bevy_ggf::mapping::terrain::{TerrainClass, TileTerrainInfo};
 use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId, ObjectInfo};
@@ -65,7 +65,7 @@ impl GameCommand for SpawnAbility {
 
         let mut system_state: SystemState<(
             Query<(Entity, &Player, &mut PlayerPoints)>,
-            Query<(&PlayerMarker, &TilePos, &Tile)>,
+            Query<(Option<&PlayerMarker>, &TilePos, &Tile, &TileTerrainInfo)>,
         )> = SystemState::new(world);
         let (mut players, tiles) = system_state.get_mut(world);
 
@@ -129,13 +129,27 @@ impl GameCommand for SpawnAbility {
                 }
             }
             Abilities::Fortify => {
-                let Some((player_marker, _, _)) = tiles
+                let Some((player_marker, _, _, tile_terrain_info)) = tiles
                     .iter()
-                    .find(|(_, id, _)| id == &&self.target_tile_pos)else {
+                    .find(|(_, id, _, _)| id == &&self.target_tile_pos)else {
                     
                     world.insert_resource(game_data);
                     return Err("Failed to Find Fortify Tile Pos".parse().unwrap())
                 };
+                
+                let Some(player_marker) = player_marker else {
+                    world.insert_resource(game_data);
+                    return Err("Tile doesnt contain a player marker".parse().unwrap())
+                };
+
+                if tile_terrain_info.terrain_type.terrain_class
+                    != (TerrainClass {
+                    name: "Colorable".to_string(),
+                })
+                {
+                    world.insert_resource(game_data);
+                    return Err("Tile is not a Colorable Tile".parse().unwrap());
+                }
 
                 if player_points.ability_points >= 50 && player_marker.id() == self.player_id {
                     //actions.placed_ability = true;
@@ -186,6 +200,24 @@ impl GameCommand for SpawnAbility {
                 }
             }
             Abilities::Expand => {
+
+                let Some((_, _, _, tile_terrain_info)) = tiles
+                    .iter()
+                    .find(|(_, id, _, _)| id == &&self.target_tile_pos)else {
+
+                    world.insert_resource(game_data);
+                    return Err("Failed to Find Fortify Tile Pos".parse().unwrap())
+                };
+
+                if tile_terrain_info.terrain_type.terrain_class
+                    != (TerrainClass {
+                    name: "Colorable".to_string(),
+                })
+                {
+                    world.insert_resource(game_data);
+                    return Err("Tile is not a Colorable Tile".parse().unwrap());
+                }
+                
                 if player_points.ability_points >= 50 {
                     //actions.placed_ability = true;
 

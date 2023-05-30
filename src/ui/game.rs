@@ -987,6 +987,7 @@ where
                 .spawn(NodeBundle {
                     style: Style {
                         size: Size::new(Val::Px(35.0), Val::Px(35.0)),
+                        padding: UiRect::all(Val::Px(3.0)),
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
                         position_type: PositionType::Absolute,
@@ -1003,40 +1004,39 @@ where
                     ..default()
                 })
                 .with_children(|parent| {
-                    parent.spawn(NodeBundle {
-                        style: Style {
-                            size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-                            margin: UiRect::all(Val::Px(5.0)),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            position_type: PositionType::Relative,
-                            ..default()
-                        },
-                        background_color: Color::BLACK.into(),
-                        ..default()
-                    });
-                })
-                .with_children(|parent| {
-                    parent.spawn(
-                        (TextBundle::from_section(
-                            format!("{:?}", building_cost),
-                            TextStyle {
-                                font: font_assets.fira_sans.clone(),
-                                font_size: 24.0,
-                                color: Color::WHITE,
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                position_type: PositionType::Relative,
+                                ..default()
                             },
-                        )
-                        .with_text_alignment(TextAlignment::Center)
-                        .with_style(Style {
-                            size: Size::new(Val::Auto, Val::Auto),
-                            position_type: PositionType::Relative,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            margin: UiRect::all(Val::Px(5.0)),
-                            align_self: AlignSelf::Center,
+                            background_color: Color::BLACK.into(),
                             ..default()
-                        })),
-                    );
+                        })
+                        .with_children(|parent| {
+                            parent.spawn(
+                                (TextBundle::from_section(
+                                    format!("{:?}", building_cost),
+                                    TextStyle {
+                                        font: font_assets.fira_sans.clone(),
+                                        font_size: 18.0,
+                                        color: Color::WHITE,
+                                    },
+                                )
+                                .with_text_alignment(TextAlignment::Center)
+                                .with_style(Style {
+                                    size: Size::new(Val::Auto, Val::Auto),
+                                    position_type: PositionType::Relative,
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    align_self: AlignSelf::Center,
+                                    ..default()
+                                })),
+                            );
+                        });
                 });
         });
 

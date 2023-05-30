@@ -11,6 +11,7 @@ mod loading;
 mod mapping;
 mod player;
 mod ui;
+mod framework;
 
 use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
@@ -29,6 +30,7 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ggf::BggfDefaultPlugins;
+use crate::framework::FrameworkPlugin;
 
 /// Generic Game State
 /// Update with a separate Pause state eventually
@@ -78,7 +80,8 @@ impl Plugin for GamePlugin {
             .add_plugin(InternalAudioPlugin)
             .add_plugin(CameraPlugin)
             .add_plugin(PlayerPlugin)
-            .add_plugin(GameCorePlugin);
+            .add_plugin(GameCorePlugin)
+            .add_plugin(FrameworkPlugin);
 
         /*
         #[cfg(debug_assertions)]

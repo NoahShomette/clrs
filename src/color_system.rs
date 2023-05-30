@@ -9,7 +9,6 @@ use bevy::reflect::Reflect;
 use bevy::utils::HashMap;
 use bevy_ecs_tilemap::prelude::TileStorage;
 use bevy_ecs_tilemap::tiles::TilePos;
-use bevy_ggf::game_core::state::Changed;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::mapping::MapId;
@@ -216,7 +215,6 @@ pub fn handle_color_conflicts(
                             tile_color_strength: TileColorStrength::One,
                         },
                         PlayerMarker::new(highest.0),
-                        Changed::default(),
                     ));
                     for (entity, mut player_points, player_id) in player_query.iter_mut() {
                         if player_id.id() == 0 {
@@ -226,7 +224,7 @@ pub fn handle_color_conflicts(
                                     .saturating_add(1);
                         }
                         if player_id.id() == highest.0 {
-                            increase_ability_points(entity, &mut player_points, &mut commands);
+                            increase_ability_points(&mut player_points);
                         }
                     }
                     handle_conflicts = false;
@@ -237,12 +235,10 @@ pub fn handle_color_conflicts(
                             handle_conflicts = false;
                         } else {
                             tile_color.strengthen();
-                            commands.entity(entity).insert(Changed::default());
                             handle_conflicts = false;
                         }
                     } else {
                         tile_color.damage();
-                        commands.entity(entity).insert(Changed::default());
                         if let TileColorStrength::Neutral = tile_color.tile_color_strength {
                             if tile_player_marker.id() == 0 {
                                 player_tiles_changed_count.player_lost_tiles =
@@ -263,15 +259,10 @@ pub fn handle_color_conflicts(
 }
 
 pub fn increase_building_points(
-    player_points_entity: Entity,
     mut player_points: &mut PlayerPoints,
-    commands: &mut Commands,
 ) {
     if player_points.building_points < 50 {
         player_points.building_points = player_points.building_points.saturating_add(1);
-        commands
-            .entity(player_points_entity)
-            .insert(Changed::default());
         return;
     }
     let mut rng = thread_rng();
@@ -279,22 +270,14 @@ pub fn increase_building_points(
     let chance = rng.gen_bool((amount_fifty_points - 0.0) / (4.0 - 0.0));
     if !chance {
         player_points.building_points = player_points.building_points.saturating_add(1);
-        commands
-            .entity(player_points_entity)
-            .insert(Changed::default());
     }
 }
 
 pub fn increase_ability_points(
-    player_points_entity: Entity,
     mut player_points: &mut PlayerPoints,
-    commands: &mut Commands,
 ) {
     if player_points.ability_points < 50 {
         player_points.ability_points = player_points.ability_points.saturating_add(1);
-        commands
-            .entity(player_points_entity)
-            .insert(Changed::default());
         return;
     }
     let mut rng = thread_rng();
@@ -302,9 +285,6 @@ pub fn increase_ability_points(
     let chance = rng.gen_bool((amount_fifty_points - 0.0) / (3.0 - 0.0));
     if !chance {
         player_points.ability_points = player_points.ability_points.saturating_add(1);
-        commands
-            .entity(player_points_entity)
-            .insert(Changed::default());
     }
 }
 
@@ -360,7 +340,6 @@ pub fn handle_color_conflict_guarantees(
                                 tile_color_strength: TileColorStrength::One,
                             },
                             PlayerMarker::new(*casting_player),
-                            Changed::default(),
                         ));
                     }
                 }
@@ -369,7 +348,6 @@ pub fn handle_color_conflict_guarantees(
                         match conflict_type {
                             ConflictType::Damage => {
                                 tile_color.damage();
-                                commands.entity(entity).insert(Changed::default());
                                 if let TileColorStrength::Neutral = tile_color.tile_color_strength {
                                     player_tiles_changed_count.player_lost_tiles =
                                         player_tiles_changed_count
@@ -384,7 +362,6 @@ pub fn handle_color_conflict_guarantees(
                                 if let TileColorStrength::Five = tile_color.tile_color_strength {
                                 } else {
                                     tile_color.strengthen();
-                                    commands.entity(entity).insert(Changed::default());
                                 }
                             }
                         }
@@ -392,7 +369,6 @@ pub fn handle_color_conflict_guarantees(
                         match conflict_type {
                             ConflictType::Damage => {
                                 tile_color.damage();
-                                commands.entity(entity).insert(Changed::default());
                                 if let TileColorStrength::Neutral = tile_color.tile_color_strength {
                                     commands.entity(entity).remove::<PlayerMarker>();
                                     commands.entity(entity).remove::<TileColor>();
@@ -402,12 +378,10 @@ pub fn handle_color_conflict_guarantees(
                                 if let TileColorStrength::Five = tile_color.tile_color_strength {
                                 } else {
                                     tile_color.strengthen();
-                                    commands.entity(entity).insert(Changed::default());
                                 }
                             }
                             ConflictType::Natural => {
                                 tile_color.damage();
-                                commands.entity(entity).insert(Changed::default());
                                 if let TileColorStrength::Neutral = tile_color.tile_color_strength {
                                     commands.entity(entity).remove::<PlayerMarker>();
                                     commands.entity(entity).remove::<TileColor>();

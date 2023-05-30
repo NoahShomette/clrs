@@ -45,7 +45,7 @@ pub fn update_player_points(
         for (entity, mut player_points, player_id) in player_query.iter_mut() {
             let points = *player_points_hashmap.entry(player_id.id()).or_insert(0) / 16;
             for _ in 0..points {
-                increase_building_points(entity, &mut player_points, &mut commands);
+                increase_building_points(&mut player_points);
             }
         }
         points_timer.set_duration(Duration::from_secs_f32(1.0));

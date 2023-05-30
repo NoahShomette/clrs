@@ -18,7 +18,7 @@ use bevy_ecs_tilemap::prelude::{TileStorage, TilemapSize};
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
-use bevy_ggf::mapping::terrain::TileTerrainInfo;
+use bevy_ggf::mapping::terrain::{TerrainClass, TileTerrainInfo};
 use bevy_ggf::mapping::tiles::{ObjectStackingClass, StackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId, ObjectInfo};
@@ -66,7 +66,13 @@ impl GameCommand for SpawnBuilding {
 
         let mut system_state: SystemState<(
             Query<(Entity, &Player, &mut PlayerPoints)>,
-            Query<(&PlayerMarker, &TilePos, &Tile, &TileObjectStacks)>,
+            Query<(
+                &PlayerMarker,
+                &TilePos,
+                &Tile,
+                &TileTerrainInfo,
+                &TileObjectStacks,
+            )>,
         )> = SystemState::new(world);
         let (mut players, tiles) = system_state.get_mut(world);
 
@@ -77,12 +83,21 @@ impl GameCommand for SpawnBuilding {
             return Err("Failed to Find Player ID".parse().unwrap());
         };
 
-        let Some((player_marker, _, _, tile_object_stacks)) = tiles
+        let Some((player_marker, _, _, tile_terrain_info, tile_object_stacks)) = tiles
             .iter()
-            .find(|(_, id, _, _)| id == &&self.target_tile_pos)else {
+            .find(|(_, id, _, _, _)| id == &&self.target_tile_pos)else {
             world.insert_resource(game_data);
             return Err("Failed to Find target tile pos".parse().unwrap());
         };
+
+        if tile_terrain_info.terrain_type.terrain_class
+            != (TerrainClass {
+                name: "Colorable".to_string(),
+            })
+        {
+            world.insert_resource(game_data);
+            return Err("Tile is not a Colorable Tile".parse().unwrap());
+        }
 
         if player_marker.id() != self.player_id {
             world.insert_resource(game_data);
