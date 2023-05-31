@@ -73,22 +73,20 @@ impl Plugin for GameCorePlugin {
     }
 }
 
-pub const BORDER_PADDING_TOTAL: u32 = 20;
-
 pub fn setup_game_resource(mut world: &mut World) {
     let game_build_settings = GameBuildSettings::from_world(&mut world);
     world.insert_resource(game_build_settings);
 }
 
 pub fn simulate_game(world: &mut World) {
-    world.resource_scope(|mut world, mut game: Mut<Game>| {
+    world.resource_scope(|world, mut game: Mut<Game>| {
         world.resource_scope(|world, mut game_runtime: Mut<GameRuntime<TestRunner>>| {
             game.game_world
-                .resource_scope(|world, mut time: Mut<Time>| {
+                .resource_scope(|_world, mut time: Mut<Time>| {
                     time.update();
                 });
             game_runtime.simulate(&mut game.game_world);
-            world.resource_scope(|world, mut game_commands: Mut<GameCommands>| {
+            world.resource_scope(|_world, mut game_commands: Mut<GameCommands>| {
                 game_commands.execute_buffer(&mut game.game_world);
             });
         });
@@ -176,7 +174,7 @@ impl GameBuildSettings {
 impl FromWorld for GameBuildSettings {
     fn from_world(world: &mut World) -> Self {
         world.resource_scope(|world, maps: Mut<LevelHandle>| {
-            world.resource_scope(|world, assets: Mut<Assets<Levels>>| {
+            world.resource_scope(|_world, assets: Mut<Assets<Levels>>| {
                 let mut levels_sizes = LevelsSizes {
                     lists: Default::default(),
                 };
@@ -197,7 +195,7 @@ impl FromWorld for GameBuildSettings {
                     level_sizes: levels_sizes,
                 };
             })
-        })
+        })  
     }
 }
 
@@ -222,7 +220,7 @@ pub fn start_game(world: &mut World) {
     let mut game_data = GameData::default();
 
     let level_data = world.resource_scope(|world, mut level_handles: Mut<LevelHandle>| {
-        return world.resource_scope(|world, mut level_assets: Mut<Assets<Levels>>| {
+        return world.resource_scope(|_world, mut level_assets: Mut<Assets<Levels>>| {
             level_assets.get(&level_handles.levels).unwrap().levels[game_build_settings.map_type]
                 .clone()
         });

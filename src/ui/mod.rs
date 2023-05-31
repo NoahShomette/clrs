@@ -2,6 +2,7 @@ mod end_game;
 mod game;
 mod menu;
 mod pause;
+mod components;
 
 use crate::loading::colors_loader::{PalettesAssets, PalettesHandle};
 use crate::loading::FontAssets;

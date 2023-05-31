@@ -3,7 +3,7 @@ use bevy::app::{App, Plugin};
 use bevy::math::Vec3;
 use bevy::prelude::{
     Commands, Component, Entity, EventReader, EventWriter, FromReflect, Mut, Query, ResMut,
-    Resource, With, Without, World,
+    Resource, With,
 };
 use bevy::reflect::Reflect;
 use bevy::utils::HashMap;
@@ -258,9 +258,7 @@ pub fn handle_color_conflicts(
     color_conflicts.conflicts.clear();
 }
 
-pub fn increase_building_points(
-    mut player_points: &mut PlayerPoints,
-) {
+pub fn increase_building_points(mut player_points: &mut PlayerPoints) {
     if player_points.building_points < 50 {
         player_points.building_points = player_points.building_points.saturating_add(1);
         return;
@@ -273,9 +271,7 @@ pub fn increase_building_points(
     }
 }
 
-pub fn increase_ability_points(
-    mut player_points: &mut PlayerPoints,
-) {
+pub fn increase_ability_points(mut player_points: &mut PlayerPoints) {
     if player_points.ability_points < 50 {
         player_points.ability_points = player_points.ability_points.saturating_add(1);
         return;

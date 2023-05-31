@@ -16,6 +16,7 @@ use bevy::time::{Time, TimerMode};
 use bevy::utils::hashbrown::HashMap;
 use bevy_ecs_tilemap::prelude::{TileStorage, TilemapSize};
 use bevy_ecs_tilemap::tiles::TilePos;
+use bevy_ggf::game_core::change_detection::DespawnObject;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
 use bevy_ggf::mapping::terrain::{TerrainClass, TileTerrainInfo};
@@ -279,7 +280,6 @@ pub fn destroy_buildings(
     >,
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut commands: Commands,
-    mut despawn_objects: ResMut<DespawnedObjects>,
 ) {
     for (
         building_entity,
@@ -319,11 +319,7 @@ pub fn destroy_buildings(
 
         if destroy_ability {
             println!("killing buildings");
-            despawn_objects
-                .despawned_objects
-                .insert(*object_id, Changed::default());
-            commands.entity(building_entity).despawn();
-
+            commands.entity(building_entity).insert(DespawnObject);
             tile_object_stacks.decrement_object_class_count(object_stacking_class);
         }
     }

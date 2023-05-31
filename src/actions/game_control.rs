@@ -10,7 +10,7 @@ use crate::buildings::{
     Building, BuildingCooldown, BuildingMarker, BuildingTypes, SpawnBuildingExt,
 };
 use crate::draw::world_pos_to_tile_pos;
-use crate::game::{GameData, BORDER_PADDING_TOTAL};
+use crate::game::{GameData};
 use crate::player::PlayerPoints;
 use bevy::ecs::system::SystemState;
 use bevy::math::Vec2;

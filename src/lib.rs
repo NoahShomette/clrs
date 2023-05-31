@@ -83,13 +83,13 @@ impl Plugin for GamePlugin {
             .add_plugin(GameCorePlugin)
             .add_plugin(FrameworkPlugin);
 
-        /*
+        
         #[cfg(debug_assertions)]
         {
             app.add_plugin(FrameTimeDiagnosticsPlugin::default())
                 .add_plugin(LogDiagnosticsPlugin::default());
         }
 
-         */
+         
     }
 }

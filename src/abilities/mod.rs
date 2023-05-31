@@ -15,6 +15,7 @@ use bevy::prelude::{
 };
 use bevy_ecs_tilemap::prelude::TileStorage;
 use bevy_ecs_tilemap::tiles::TilePos;
+use bevy_ggf::game_core::change_detection::{despawn_objects, DespawnObject};
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
 use bevy_ggf::mapping::terrain::{TerrainClass, TileTerrainInfo};
@@ -288,9 +289,8 @@ pub fn destroy_abilities(
     mut tiles: Query<(Entity, &mut TileObjectStacks), (Without<Object>, With<Tile>)>,
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut commands: Commands,
-    mut despawn_objects: ResMut<DespawnedObjects>,
 ) {
-    for (building_entity, object_id, ability, object_grid_pos, object_stacking_class) in
+    for (ability_entity, object_id, ability, object_grid_pos, object_stacking_class) in
         abilities.iter()
     {
         let Some((_, tile_storage)) = tile_storage_query
@@ -305,10 +305,7 @@ pub fn destroy_abilities(
             continue;
         };
 
-        despawn_objects
-            .despawned_objects
-            .insert(*object_id, Changed::default());
-        commands.entity(building_entity).despawn();
+        commands.entity(ability_entity).insert(DespawnObject);
         tile_object_stacks.decrement_object_class_count(object_stacking_class);
     }
 }

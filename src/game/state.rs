@@ -12,6 +12,7 @@ use bevy_ggf::game_core::Game;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::object::ObjectId;
 use bevy_ggf::player::{Player, PlayerMarker};
+use crate::audio::ObjectSpawnedSound;
 
 #[derive(Component)]
 pub struct OldObjectState {
@@ -95,15 +96,17 @@ pub fn update_game_state(world: &mut World) {
             let mut system_state: SystemState<Query<(Entity, &ObjectId)>> =
                 SystemState::new(&mut world);
 
+            let entity = world.spawn_empty().id();
+
             let mut object_query = system_state.get(&mut world);
             if let Some((entity, object_id)) = object_query
                 .iter_mut()
                 .find(|(_, id)| id == &&object.object_id)
             {
                 world.entity_mut(entity).despawn_recursive();
+            } else {
+                world.entity_mut(entity).insert(ObjectSpawnedSound);
             }
-
-            let entity = world.spawn_empty().id();
 
             for component in object.components {
                 let type_info = component.type_name();
