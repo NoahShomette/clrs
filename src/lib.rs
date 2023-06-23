@@ -6,12 +6,13 @@ mod buildings;
 mod camera;
 mod color_system;
 mod draw;
+mod framework;
 mod game;
 mod loading;
 mod mapping;
+mod pathfinding;
 mod player;
 mod ui;
-mod framework;
 
 use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
@@ -21,6 +22,7 @@ use crate::player::PlayerPlugin;
 use crate::camera::CameraPlugin;
 use crate::color_system::ColorSystemPlugin;
 use crate::draw::DrawPlugin;
+use crate::framework::FrameworkPlugin;
 use crate::game::GameCorePlugin;
 use crate::loading::colors_loader::PalettesAssets;
 use crate::ui::UiPlugin;
@@ -30,7 +32,6 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ggf::BggfDefaultPlugins;
-use crate::framework::FrameworkPlugin;
 
 /// Generic Game State
 /// Update with a separate Pause state eventually
@@ -83,13 +84,10 @@ impl Plugin for GamePlugin {
             .add_plugin(GameCorePlugin)
             .add_plugin(FrameworkPlugin);
 
-        
         #[cfg(debug_assertions)]
         {
             app.add_plugin(FrameTimeDiagnosticsPlugin::default())
                 .add_plugin(LogDiagnosticsPlugin::default());
         }
-
-         
     }
 }

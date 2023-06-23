@@ -1,18 +1,21 @@
 use crate::player::PlayerPoints;
 use bevy::app::{App, Plugin};
+use bevy::ecs::system::SystemState;
 use bevy::math::Vec3;
 use bevy::prelude::{
     Commands, Component, Entity, EventReader, EventWriter, FromReflect, Mut, Query, ResMut,
-    Resource, With,
+    Resource, With, World,
 };
 use bevy::reflect::Reflect;
 use bevy::utils::HashMap;
 use bevy_ecs_tilemap::prelude::TileStorage;
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
-use bevy_ggf::mapping::tiles::Tile;
+use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks, TileObjects};
 use bevy_ggf::mapping::MapId;
+use bevy_ggf::movement::TileMoveCheck;
 use bevy_ggf::object::ObjectId;
+use bevy_ggf::pathfinding::PathfindCallback;
 use bevy_ggf::player::{Player, PlayerMarker};
 use rand::{thread_rng, Rng};
 
@@ -79,6 +82,62 @@ pub fn register_guaranteed_color_conflict(
         });
     }
     return false;
+}
+
+pub struct ColorConflictCallback;
+
+impl PathfindCallback<TilePos> for ColorConflictCallback {
+    fn foreach_tile(
+        &mut self,
+        pathfinding_entity: Entity,
+        node_entity: Entity,
+        node_pos: TilePos,
+        world: &mut World,
+    ) {
+        let mut system_state: SystemState<(
+            Query<(Entity, &ObjectId, &PlayerMarker)>,
+            Query<(&TileTerrainInfo, Option<&PlayerMarker>, Option<&TileColor>)>,
+            EventWriter<ColorConflictEvent>,
+        )> = SystemState::new(world);
+        let (mut object_query, mut tile_query, mut event_writer) = system_state.get_mut(world);
+        let Ok((entity, object_id, player_marker)) = object_query.get(pathfinding_entity) else{
+            return
+        };
+
+        let Ok((tile_terrain_info, tile_player_marker, tile_color)) = tile_query.get(node_entity) else{
+            return
+        };
+
+        if tile_terrain_info.terrain_type.name != String::from("BasicColorable") {
+            return;
+        }
+
+        if tile_player_marker.is_some() && tile_color.is_some() {
+            if player_marker.id() == tile_player_marker.unwrap().id() {
+                if !tile_color.unwrap().max_strength() {
+                    event_writer.send(ColorConflictEvent {
+                        from_object: *object_id,
+                        tile_pos: node_pos,
+                        player: player_marker.id(),
+                    });
+                }
+                return;
+            } else {
+                event_writer.send(ColorConflictEvent {
+                    from_object: *object_id,
+                    tile_pos: node_pos,
+                    player: player_marker.id(),
+                });
+            }
+        } else {
+            event_writer.send(ColorConflictEvent {
+                from_object: *object_id,
+                tile_pos: node_pos,
+                player: player_marker.id(),
+            });
+        }
+        return;
+    }
 }
 
 /// Function that will take the tile query and the player and see if - returns whether the checked

@@ -1,4 +1,4 @@
-﻿pub mod draw;
+pub mod draw;
 
 use crate::draw::draw::{draw_objects, draw_tile_backgrounds, draw_tiles, TILE_GAP, TILE_SIZE};
 use crate::GameState;
@@ -16,8 +16,7 @@ impl Plugin for DrawPlugin {
             (draw_tile_backgrounds, draw_tiles, draw_objects).in_set(OnUpdate(GameState::Playing)),
         );
         app.add_systems(
-            (draw_tile_backgrounds, draw_tiles, draw_objects)
-                .in_set(OnUpdate(GameState::Paused)),
+            (draw_tile_backgrounds, draw_tiles, draw_objects).in_set(OnUpdate(GameState::Paused)),
         );
         app.add_systems(
             (draw_tile_backgrounds, draw_tiles, draw_objects).in_set(OnUpdate(GameState::Ended)),

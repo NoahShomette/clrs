@@ -195,7 +195,7 @@ impl FromWorld for GameBuildSettings {
                     level_sizes: levels_sizes,
                 };
             })
-        })  
+        })
     }
 }
 

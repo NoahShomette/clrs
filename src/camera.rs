@@ -1,4 +1,4 @@
-﻿use crate::draw::draw::{TILE_GAP, TILE_SIZE};
+use crate::draw::draw::{TILE_GAP, TILE_SIZE};
 use crate::game::{start_game, GameData};
 use crate::GameState;
 use bevy::app::App;
@@ -39,8 +39,8 @@ pub fn spawn_camera(mut commands: Commands, camera_query: Query<&mut Camera, Wit
 pub fn setup_camera_menu(
     mut camera_query: Query<(&mut Camera, &mut OrthographicProjection), With<MainCamera>>,
 ) {
-    if let Ok((mut camera, mut projection)) = camera_query.get_single_mut(){
-        *projection = OrthographicProjection::default(); 
+    if let Ok((mut camera, mut projection)) = camera_query.get_single_mut() {
+        *projection = OrthographicProjection::default();
     }
 }
 

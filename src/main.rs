@@ -2,11 +2,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy::prelude::*;
-use bevy::window::{PrimaryWindow};
+use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
 use bevy_splash_screen::{SplashAssetType, SplashItem, SplashPlugin, SplashScreen};
-use bevy_tweening::{EaseFunction};
+use bevy_tweening::EaseFunction;
 use bevy_vector_shapes::Shape2dPlugin;
 use clrs::{GamePlugin, GameState};
 use std::io::Cursor;
@@ -41,45 +41,43 @@ fn main() {
             SplashPlugin::new(GameState::Splash, GameState::Menu)
                 .skipable()
                 .add_screen(SplashScreen {
-                    brands: vec![
-                        SplashItem {
-                            asset: SplashAssetType::SingleText(
-                                Text::from_sections([
-                                    TextSection::new(
-                                        "CLRS\n",
-                                        TextStyle {
-                                            font_size: 40.,
-                                            color: Color::WHITE,
-                                            ..default()
-                                        },
-                                    ),
-                                    TextSection::new(
-                                        "by\n",
-                                        TextStyle {
-                                            font_size: 24.,
-                                            color: Color::WHITE.with_a(0.75),
-                                            ..default()
-                                        },
-                                    ),
-                                    TextSection::new(
-                                        "Noah & Kolbe",
-                                        TextStyle {
-                                            font_size: 32.,
-                                            color: Color::WHITE,
-                                            ..default()
-                                        },
-                                    ),
-                                ])
-                                .with_alignment(TextAlignment::Center),
-                                "fonts/FiraSans-Bold.ttf".to_string(),
-                            ),
-                            tint: Color::WHITE,
-                            size: Size::new(Val::Auto, Val::Px(150.)),
-                            ease_function: EaseFunction::QuarticInOut.into(),
-                            duration: Duration::from_secs_f32(1.),
-                            is_static: false,
-                        },
-                    ],
+                    brands: vec![SplashItem {
+                        asset: SplashAssetType::SingleText(
+                            Text::from_sections([
+                                TextSection::new(
+                                    "CLRS\n",
+                                    TextStyle {
+                                        font_size: 40.,
+                                        color: Color::WHITE,
+                                        ..default()
+                                    },
+                                ),
+                                TextSection::new(
+                                    "by\n",
+                                    TextStyle {
+                                        font_size: 24.,
+                                        color: Color::WHITE.with_a(0.75),
+                                        ..default()
+                                    },
+                                ),
+                                TextSection::new(
+                                    "Noah & Kolbe",
+                                    TextStyle {
+                                        font_size: 32.,
+                                        color: Color::WHITE,
+                                        ..default()
+                                    },
+                                ),
+                            ])
+                            .with_alignment(TextAlignment::Center),
+                            "fonts/FiraSans-Bold.ttf".to_string(),
+                        ),
+                        tint: Color::WHITE,
+                        size: Size::new(Val::Auto, Val::Px(150.)),
+                        ease_function: EaseFunction::QuarticInOut.into(),
+                        duration: Duration::from_secs_f32(1.),
+                        is_static: false,
+                    }],
                     background_color: BackgroundColor(Color::BLACK),
                     ..default()
                 })

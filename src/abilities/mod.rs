@@ -137,7 +137,7 @@ impl GameCommand for SpawnAbility {
                     world.insert_resource(game_data);
                     return Err("Failed to Find Fortify Tile Pos".parse().unwrap())
                 };
-                
+
                 let Some(player_marker) = player_marker else {
                     world.insert_resource(game_data);
                     return Err("Tile doesnt contain a player marker".parse().unwrap())
@@ -145,8 +145,8 @@ impl GameCommand for SpawnAbility {
 
                 if tile_terrain_info.terrain_type.terrain_class
                     != (TerrainClass {
-                    name: "Colorable".to_string(),
-                })
+                        name: "Colorable".to_string(),
+                    })
                 {
                     world.insert_resource(game_data);
                     return Err("Tile is not a Colorable Tile".parse().unwrap());
@@ -201,7 +201,6 @@ impl GameCommand for SpawnAbility {
                 }
             }
             Abilities::Expand => {
-
                 let Some((_, _, _, tile_terrain_info)) = tiles
                     .iter()
                     .find(|(_, id, _, _)| id == &&self.target_tile_pos)else {
@@ -212,13 +211,13 @@ impl GameCommand for SpawnAbility {
 
                 if tile_terrain_info.terrain_type.terrain_class
                     != (TerrainClass {
-                    name: "Colorable".to_string(),
-                })
+                        name: "Colorable".to_string(),
+                    })
                 {
                     world.insert_resource(game_data);
                     return Err("Tile is not a Colorable Tile".parse().unwrap());
                 }
-                
+
                 if player_points.ability_points >= 50 {
                     //actions.placed_ability = true;
 

@@ -1,4 +1,5 @@
-﻿use crate::color_system::{TileColor, TileColorStrength};
+use crate::audio::ObjectSpawnedSound;
+use crate::color_system::{TileColor, TileColorStrength};
 use crate::draw::{DrawObject, DrawTile};
 use bevy::ecs::system::SystemState;
 use bevy::ecs::world::EntityMut;
@@ -12,7 +13,6 @@ use bevy_ggf::game_core::Game;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::object::ObjectId;
 use bevy_ggf::player::{Player, PlayerMarker};
-use crate::audio::ObjectSpawnedSound;
 
 #[derive(Component)]
 pub struct OldObjectState {

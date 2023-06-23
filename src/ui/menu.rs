@@ -7,7 +7,10 @@ use bevy::prelude::*;
 use std::process::exit;
 use std::thread::spawn;
 
-use crate::ui::{modal_panel, BasicButton, DisabledButton, MenuNavigation, ModalStyle, PlayerColors, UpdateBackgroundWithCurrentPlayerColor, UpdateTextColorWithCurrentPlayerColor};
+use crate::ui::{
+    modal_panel, BasicButton, DisabledButton, MenuNavigation, ModalStyle, PlayerColors,
+    UpdateBackgroundWithCurrentPlayerColor, UpdateTextColorWithCurrentPlayerColor,
+};
 
 pub struct MenuPlugin;
 
