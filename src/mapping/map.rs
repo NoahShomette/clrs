@@ -1,14 +1,19 @@
 use crate::level_loader::{Level, TileType};
-use bevy::prelude::{Commands, Entity, Mut, Query, Reflect, World};
-use bevy::utils::petgraph::visit::Walker;
+use bevy::prelude::{Mut, Reflect, Resource, World};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::mapping::terrain::{TerrainType, TileTerrainInfo};
 use bevy_ggf::mapping::tiles::{
     BggfTileBundle, BggfTileObjectBundle, Tile, TileObjectStacks, TileObjects,
 };
-use bevy_ggf::mapping::{Map, MapDeSpawned, MapId, MapIdProvider, MapSpawned};
+use bevy_ggf::mapping::{Map, MapId, MapIdProvider};
 use bevy_ggf::movement::TerrainMovementCosts;
+
+#[derive(Default, Resource)]
+pub struct MapTileStorage {
+    pub tile_storage: TileStorage,
+    pub tilemap_size: TilemapSize,
+}
 
 pub trait MapCommandsExt {
     fn spawn_random_map(
@@ -125,6 +130,11 @@ impl GameCommand for SpawnRandomMap {
 
         //world.send_event::<MapSpawned>(MapSpawned { map_id: id });
 
+        world.insert_resource(MapTileStorage {
+            tile_storage: tile_storage.clone(),
+            tilemap_size: map_size.clone(),
+        });
+
         world
             .entity_mut(tilemap_entity)
             .insert((grid_size, map_type, map_size, tile_storage, tile_size))
@@ -219,6 +229,11 @@ impl GameCommand for SpawnMap {
 
         //world.send_event::<MapSpawned>(MapSpawned { map_id: id });
 
+        world.insert_resource(MapTileStorage {
+            tile_storage: tile_storage.clone(),
+            tilemap_size: map_size.clone(),
+        });
+        
         world
             .entity_mut(tilemap_entity)
             .insert((grid_size, map_type, map_size, tile_storage, tile_size))

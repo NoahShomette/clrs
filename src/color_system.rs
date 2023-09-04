@@ -1,3 +1,4 @@
+use crate::pathfinding::NodeIsPlayersCheckQueryState;
 use crate::player::PlayerPoints;
 use bevy::app::{App, Plugin};
 use bevy::ecs::system::SystemState;
@@ -86,6 +87,23 @@ pub fn register_guaranteed_color_conflict(
 
 pub struct ColorConflictCallback;
 
+#[derive(Resource)]
+pub struct ColorConflictCallbackQueryState {
+    pub query: SystemState<(
+        Query<'static, 'static, (Entity, &'static ObjectId, &'static PlayerMarker)>,
+        Query<
+            'static,
+            'static,
+            (
+                &'static TileTerrainInfo,
+                Option<&'static PlayerMarker>,
+                Option<&'static TileColor>,
+            ),
+        >,
+        EventWriter<'static, ColorConflictEvent>,
+    )>,
+}
+
 impl PathfindCallback<TilePos> for ColorConflictCallback {
     fn foreach_tile(
         &mut self,
@@ -94,21 +112,32 @@ impl PathfindCallback<TilePos> for ColorConflictCallback {
         node_pos: TilePos,
         world: &mut World,
     ) {
-        let mut system_state: SystemState<(
-            Query<(Entity, &ObjectId, &PlayerMarker)>,
-            Query<(&TileTerrainInfo, Option<&PlayerMarker>, Option<&TileColor>)>,
-            EventWriter<ColorConflictEvent>,
-        )> = SystemState::new(world);
-        let (mut object_query, mut tile_query, mut event_writer) = system_state.get_mut(world);
+        let mut system_state = match world.remove_resource::<ColorConflictCallbackQueryState>() {
+            None => {
+                let system_state: SystemState<(
+                    Query<(Entity, &ObjectId, &PlayerMarker)>,
+                    Query<(&TileTerrainInfo, Option<&PlayerMarker>, Option<&TileColor>)>,
+                    EventWriter<ColorConflictEvent>,
+                )> = SystemState::new(world);
+                ColorConflictCallbackQueryState {
+                    query: system_state,
+                }
+            }
+            Some(res) => res,
+        };
+        let (mut object_query, mut tile_query, mut event_writer) = system_state.query.get_mut(world);
         let Ok((entity, object_id, player_marker)) = object_query.get(pathfinding_entity) else{
+            world.insert_resource(system_state);
             return
         };
 
         let Ok((tile_terrain_info, tile_player_marker, tile_color)) = tile_query.get(node_entity) else{
+            world.insert_resource(system_state);
             return
         };
 
         if tile_terrain_info.terrain_type.name != String::from("BasicColorable") {
+            world.insert_resource(system_state);
             return;
         }
 
@@ -121,6 +150,7 @@ impl PathfindCallback<TilePos> for ColorConflictCallback {
                         player: player_marker.id(),
                     });
                 }
+                world.insert_resource(system_state);
                 return;
             } else {
                 event_writer.send(ColorConflictEvent {
@@ -136,6 +166,7 @@ impl PathfindCallback<TilePos> for ColorConflictCallback {
                 player: player_marker.id(),
             });
         }
+        world.insert_resource(system_state);
         return;
     }
 }

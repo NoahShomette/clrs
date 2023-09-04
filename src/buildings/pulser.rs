@@ -1,25 +1,25 @@
-﻿use crate::buildings::{
-    check_is_colorable, get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode,
-};
-use crate::color_system::{
-    convert_tile, ColorConflictCallback, ColorConflictEvent, TileColor, TileColorStrength,
-};
+﻿use crate::buildings::{Activate, Building};
+use crate::color_system::ColorConflictCallback;
 use crate::pathfinding::{check_if_tile_is_colorable, IsColorableNodeCheck, NodeIsPlayersCheck};
 use bevy::ecs::system::SystemState;
-use bevy::prelude::{
-    Commands, Component, Entity, EventWriter, FromReflect, Mut, Query, Reflect, With, Without,
-    World,
-};
+use bevy::log::info_span;
+use bevy::prelude::{Component, Entity, FromReflect, Mut, Query, Reflect, Resource, unwrap, With, Without, World};
 use bevy::utils::hashbrown::HashMap;
 
-use bevy_ecs_tilemap::prelude::{TilePos, TileStorage, TilemapSize};
+use crate::mapping::map::MapTileStorage;
+use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize};
 use bevy_ggf::mapping::MapId;
-use bevy_ggf::movement::{ TileMoveCheckMeta, TileMoveChecks, TileMovementCosts,
-};
-use bevy_ggf::object::{ObjectGridPosition, ObjectId};
+use bevy_ggf::movement::{TileMoveCheckMeta, TileMoveChecks};
+use bevy_ggf::object::ObjectGridPosition;
 use bevy_ggf::pathfinding::dijkstra::Node;
-use bevy_ggf::pathfinding::{DijkstraSquare, PathfindAlgorithm, PathfindCallback, PathfindMap};
+use bevy_ggf::pathfinding::{PathfindAlgorithm, PathfindCallback, PathfindMap};
 use bevy_ggf::player::PlayerMarker;
+
+#[derive(Resource)]
+pub struct PulserQueryState {
+    pub query:
+        SystemState<Query<'static, 'static, (&'static ObjectGridPosition, &'static PlayerMarker)>>,
+}
 
 #[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
 pub struct Pulser {
@@ -30,9 +30,9 @@ pub struct Pulser {
 // are not the same player then we damage their color by one. Otherwise at that point we stop.
 pub fn simulate_pulsers(mut world: &mut World) {
     let mut system_state: SystemState<
-        Query<(Entity), (Without<MapId>, With<Activate>, With<Building<Pulser>>)>,
+        Query<Entity, (Without<MapId>, With<Activate>, With<Building<Pulser>>)>,
     > = SystemState::new(&mut world);
-    let mut pulsers = system_state.get_mut(&mut world);
+    let pulsers = system_state.get_mut(&mut world);
 
     let mut pathfind = PulserPathfind { diagonals: false };
 
@@ -81,129 +81,141 @@ impl PathfindAlgorithm<TilePos, Node, Building<Pulser>> for PulserPathfind {
         PM: PathfindMap<TilePos, Node, (), Building<Pulser>>,
     >(
         &mut self,
-        on_map: MapId,
+        _: MapId,
         pathfind_entity: Entity,
-        mut world: &mut World,
+        world: &mut World,
         node_validity_checks: &mut TileMoveChecks,
         pathfind_callback: &mut Option<CB>,
         pathfind_map: &mut PM,
     ) -> Self::PathfindOutput {
-        let mut system_state: SystemState<(
-            Query<(Entity, &MapId, &TileStorage, &TilemapSize)>,
-            Query<(&ObjectGridPosition, &PlayerMarker)>,
-        )> = SystemState::new(world);
-        let (mut tile_storage_query, mut object_query) = system_state.get_mut(world);
-
-        let Ok((object_grid_position, player_marker)) = object_query.get(pathfind_entity) else{
-            return ();
-        };
-        let object_grid_position = object_grid_position.clone();
-        let player_pathing_id = player_marker.id();
-
-        let Some((_, _, tile_storage, tilemap_size)) = tile_storage_query
-            .iter_mut()
-            .find(|(_, id, _, _)| id == &&on_map)else{
-            return ();
-
-        };
-
-        let tile_storage = tile_storage.clone();
-        let tilemap_size = tilemap_size.clone();
-
-        pathfind_map.new_pathfind_map(object_grid_position.tile_position);
-
-        if let Some(callback) = pathfind_callback {
-            let Some(tile_entity) = tile_storage.get(&object_grid_position.tile_position) else {
-                return ;
+        let my_span = info_span!("Pulser Pathfinding", name = "pulser_pathfinding").entered();
+        world.resource_scope(|mut world, maptile_storage: Mut<MapTileStorage>|{
+            let mut pulser_query_state = match world.remove_resource::<PulserQueryState>() {
+                None => {                    
+                    let system_state: SystemState<Query<(&ObjectGridPosition, &PlayerMarker)>> = SystemState::new(world);
+                    PulserQueryState{
+                    query: system_state,
+                }}
+                Some(res) => {res}
             };
-            callback.foreach_tile(
-                pathfind_entity,
-                tile_entity,
-                object_grid_position.tile_position,
-                &mut world,
-            );
-        }
+            let object_query = pulser_query_state.query.get_mut(world);
 
-        let mut available_moves: Vec<TilePos> = vec![];
-        let mut tiles_changed: u32 = 0;
-
-        // unvisited nodes
-        let mut unvisited_nodes: Vec<Node> = vec![Node {
-            node_pos: object_grid_position.tile_position,
-            prior_node_pos: object_grid_position.tile_position,
-            move_cost: 0,
-            valid_move: false,
-            calculated: false,
-        }];
-        let mut visited_nodes: Vec<TilePos> = vec![];
-
-        // TODO: Create a resource or something that we can use to store all the game stats so that the
-        // strength isnt hardcoded anymore
-        while !unvisited_nodes.is_empty() && tiles_changed < 2 {
-            unvisited_nodes.sort_by(|x, y| x.move_cost.partial_cmp(&y.move_cost).unwrap());
-
-            let Some(current_node) = unvisited_nodes.get(0) else {
-                continue;
+            let Ok((object_grid_position, player_marker)) = object_query.get(pathfind_entity) else{
+                world.insert_resource(pulser_query_state);
+                return ();
             };
+            let object_grid_position = object_grid_position.clone();
+            let player_pathing_id = player_marker.id();
 
-            let neighbor_pos = pathfind_map.get_neighbors(current_node.node_pos, &tilemap_size);
+            pathfind_map.new_pathfind_map(object_grid_position.tile_position);
 
-            let current_node = *current_node;
-            let mut neighbors: Vec<(TilePos, Entity)> = vec![];
-            for neighbor in neighbor_pos.iter() {
-                let Some(tile_entity) = tile_storage.get(neighbor) else {
+            if let Some(callback) = pathfind_callback {
+                let Some(tile_entity) = maptile_storage.tile_storage.get(&object_grid_position.tile_position) else {
+                    world.insert_resource(pulser_query_state);
+                    return ;
+                };
+                callback.foreach_tile(
+                    pathfind_entity,
+                    tile_entity,
+                    object_grid_position.tile_position,
+                    &mut world,
+                );
+            }
+
+            let mut available_moves: Vec<TilePos> = vec![];
+            let mut tiles_changed: u32 = 0;
+
+            // unvisited nodes
+            let mut unvisited_nodes: Vec<Node> = vec![Node {
+                node_pos: object_grid_position.tile_position,
+                prior_node_pos: object_grid_position.tile_position,
+                move_cost: 0,
+                valid_move: false,
+                calculated: false,
+            }];
+            let mut visited_nodes: Vec<TilePos> = vec![];
+            let pp_loop = info_span!("Pulser Pathfinding", name = "pp_loop").entered();
+
+            // TODO: Create a resource or something that we can use to store all the game stats so that the
+            // strength isnt hardcoded anymore
+            while !unvisited_nodes.is_empty() && tiles_changed < 2 {
+                unvisited_nodes.sort_by(|x, y| x.move_cost.partial_cmp(&y.move_cost).unwrap());
+
+                let Some(current_node) = unvisited_nodes.get(0) else {
                     continue;
                 };
-                neighbors.push((*neighbor, tile_entity));
-            }
 
-            'neighbors: for neighbor in neighbors.iter() {
-                if visited_nodes.contains(&neighbor.0) {
-                    continue;
+                let neighbor_pos = pathfind_map.get_neighbors(current_node.node_pos, &maptile_storage.tilemap_size.clone());
+
+                let current_node = *current_node;
+                let mut neighbors: Vec<(TilePos, Entity)> = vec![];
+                for neighbor in neighbor_pos.iter() {
+                    let Some(tile_entity) = maptile_storage.tile_storage.get(neighbor) else {
+                        continue;
+                    };
+                    neighbors.push((*neighbor, tile_entity));
                 }
 
-                pathfind_map.new_node(neighbor.0, current_node);
+                let pp_neighbors = info_span!("Pulser Pathfinding", name = "pp_neighbors").entered();
+                'neighbors: for neighbor in neighbors.iter() {
+                    if visited_nodes.contains(&neighbor.0) {
+                        continue;
+                    }
 
-                if !pathfind_map.node_cost_calculation(
-                    pathfind_entity,
-                    neighbor.1,
-                    neighbor.0,
-                    current_node.node_pos,
-                    world,
-                ) {
+                    pathfind_map.new_node(neighbor.0, current_node);
+                    
+                    let pp_node_cost_calculation = info_span!("Pulser Pathfinding", name = "pp_node_cost_calculation").entered();
+                    if !pathfind_map.node_cost_calculation(
+                        pathfind_entity,
+                        neighbor.1,
+                        neighbor.0,
+                        current_node.node_pos,
+                        world,
+                    ) {
+                        let _ = pathfind_map.set_calculated_node(neighbor.0);
+                        continue 'neighbors;
+                    }
+                    pp_node_cost_calculation.exit();
+
+                    let pp_node_check_tile_move_checks = info_span!("Pulser Pathfinding", name = "pp_node_check_tile_move_checks").entered();
+                    let valid_node = node_validity_checks.check_tile_move_checks(
+                        pathfind_entity,
+                        neighbor.1,
+                        &neighbor.0,
+                        &current_node.node_pos,
+                        world,
+                    );
+                    pp_node_check_tile_move_checks.exit();
+
                     let _ = pathfind_map.set_calculated_node(neighbor.0);
-                    continue 'neighbors;
+                    if valid_node {
+                        let _ = pathfind_map.set_valid_node(neighbor.0);
+                        // if none of them return false and cancel the loop then we can infer that we are able to move into that neighbor
+                        // we add the neighbor to the list of unvisited nodes and then push the neighbor to the available moves list
+                        unvisited_nodes.push(pathfind_map.get_node_mut(neighbor.0).expect(
+                            "Is safe because we know we add the node in at the beginning of this loop",
+                        ).clone()); //
+                        available_moves.push(neighbor.0);
+                    }
+                    let pp_check_tile_move_checks = info_span!("Pulser Pathfinding", name = "pp_check_if_tile_is_colorable").entered();
+                    if check_if_tile_is_colorable(&mut world, neighbor.1, player_pathing_id) {
+                        tiles_changed += 1;
+                    }
+                    pp_check_tile_move_checks.exit();
+                    let pp_callback = info_span!("Pulser Pathfinding", name = "pp_callback").entered();
+                    if let Some(callback) = pathfind_callback {
+                        callback.foreach_tile(pathfind_entity, neighbor.1, neighbor.0, &mut world);
+                    }
+                    pp_callback.exit();
                 }
+                pp_neighbors.exit();
 
-                let valid_node = node_validity_checks.check_tile_move_checks(
-                    pathfind_entity,
-                    neighbor.1,
-                    &neighbor.0,
-                    &current_node.node_pos,
-                    world,
-                );
-
-                let _ = pathfind_map.set_calculated_node(neighbor.0);
-                if valid_node {
-                    let _ = pathfind_map.set_valid_node(neighbor.0);
-                    // if none of them return false and cancel the loop then we can infer that we are able to move into that neighbor
-                    // we add the neighbor to the list of unvisited nodes and then push the neighbor to the available moves list
-                    unvisited_nodes.push(pathfind_map.get_node_mut(neighbor.0).expect(
-                        "Is safe because we know we add the node in at the beginning of this loop",
-                    ).clone()); //
-                    available_moves.push(neighbor.0);
-                }
-                if check_if_tile_is_colorable(&mut world, neighbor.1, player_pathing_id) {
-                    tiles_changed += 1;
-                }
-                if let Some(callback) = pathfind_callback {
-                    callback.foreach_tile(pathfind_entity, neighbor.1, neighbor.0, &mut world);
-                }
+                unvisited_nodes.remove(0);
+                visited_nodes.push(current_node.node_pos);
             }
-
-            unvisited_nodes.remove(0);
-            visited_nodes.push(current_node.node_pos);
-        }
+            pp_loop.exit();
+            world.insert_resource(pulser_query_state);
+        });
         ()
     }
 }

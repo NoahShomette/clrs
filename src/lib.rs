@@ -25,6 +25,7 @@ use crate::draw::DrawPlugin;
 use crate::framework::FrameworkPlugin;
 use crate::game::GameCorePlugin;
 use crate::loading::colors_loader::PalettesAssets;
+use crate::mapping::MapPlugin;
 use crate::ui::UiPlugin;
 use bevy::app::App;
 #[cfg(debug_assertions)]
@@ -82,7 +83,8 @@ impl Plugin for GamePlugin {
             .add_plugin(CameraPlugin)
             .add_plugin(PlayerPlugin)
             .add_plugin(GameCorePlugin)
-            .add_plugin(FrameworkPlugin);
+            .add_plugin(FrameworkPlugin)
+            .add_plugin(MapPlugin);
 
         #[cfg(debug_assertions)]
         {

@@ -13,6 +13,7 @@ use bevy_ggf::object::{Object, ObjectGridPosition};
 use bevy_ggf::player::{Player, PlayerMarker};
 use bevy_vector_shapes::prelude::Canvas;
 use image::imageops::tile;
+use crate::mapping::map::MapTileStorage;
 
 #[derive(Default, Resource)]
 pub struct GameEnded {
@@ -41,6 +42,7 @@ pub fn cleanup_game(
     }
 
     commands.remove_resource::<Game>();
+    commands.remove_resource::<MapTileStorage>();
     commands.init_resource::<GameBuildSettings>();
 }
 
