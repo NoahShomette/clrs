@@ -1,12 +1,7 @@
-﻿use crate::buildings::pulser::{Pulser, PulserQueryState};
-use crate::buildings::Building;
-use crate::color_system::{
-    ColorConflictCallbackQueryState, ColorConflictEvent, TileColor, TileColorStrength,
-};
+﻿use crate::color_system::{TileColor, TileColorStrength};
 use bevy::ecs::system::SystemState;
-use bevy::prelude::{Entity, EventWriter, Query, Resource, With, Without, World};
-use bevy::utils::hashbrown::HashMap;
-use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize};
+use bevy::prelude::{Entity, Query, Resource, With, World};
+use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::movement::TileMoveCheck;
@@ -96,9 +91,9 @@ impl TileMoveCheck for IsColorableNodeCheck {
         };
         let mut tile_query = system_state.query.get_mut(world);
 
-        let Ok(tile_terrain_info) = tile_query.get(tile_entity) else{
+        let Ok(tile_terrain_info) = tile_query.get(tile_entity) else {
             world.insert_resource(system_state);
-            return false
+            return false;
         };
         let bool = tile_terrain_info.terrain_type.name == String::from("BasicColorable");
         world.insert_resource(system_state);
@@ -146,14 +141,15 @@ impl TileMoveCheck for NodeIsPlayersCheck {
             Some(res) => res,
         };
         let (mut object_query, mut tile_query) = system_state.query.get_mut(world);
-        let Ok((entity, object_id, player_marker)) = object_query.get(moving_entity) else{
+        let Ok((entity, object_id, player_marker)) = object_query.get(moving_entity) else {
             world.insert_resource(system_state);
-            return false
+            return false;
         };
 
-        let Ok((tile_terrain_info, tile_player_marker, tile_color)) = tile_query.get(tile_entity) else{
+        let Ok((tile_terrain_info, tile_player_marker, tile_color)) = tile_query.get(tile_entity)
+        else {
             world.insert_resource(system_state);
-            return false
+            return false;
         };
 
         if tile_player_marker.is_some() && tile_color.is_some() {

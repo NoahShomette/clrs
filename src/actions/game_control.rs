@@ -25,7 +25,7 @@ pub fn place_building(
         }
         if actions.try_place_building {
             let mut target_tile_pos = TilePos::default();
-            println!("{:?}", cursor_world_pos.cursor_world_pos);
+            //println!("{:?}", cursor_world_pos.cursor_world_pos);
             if actions.target_world_pos {
                 if let Some(tile_pos) = world_pos_to_tile_pos(
                     &cursor_world_pos.cursor_world_pos,
@@ -34,7 +34,7 @@ pub fn place_building(
                         y: game_data.map_size_y,
                     },
                 ) {
-                    println!("{:?}", tile_pos);
+                    //println!("{:?}", tile_pos);
                     target_tile_pos = tile_pos;
                 } else {
                     continue;

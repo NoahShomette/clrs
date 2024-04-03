@@ -1,4 +1,3 @@
-use crate::pathfinding::NodeIsPlayersCheckQueryState;
 use crate::player::PlayerPoints;
 use bevy::app::{App, Plugin};
 use bevy::ecs::system::SystemState;
@@ -12,9 +11,8 @@ use bevy::utils::HashMap;
 use bevy_ecs_tilemap::prelude::TileStorage;
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
-use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks, TileObjects};
+use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::mapping::MapId;
-use bevy_ggf::movement::TileMoveCheck;
 use bevy_ggf::object::ObjectId;
 use bevy_ggf::pathfinding::PathfindCallback;
 use bevy_ggf::player::{Player, PlayerMarker};
@@ -125,15 +123,17 @@ impl PathfindCallback<TilePos> for ColorConflictCallback {
             }
             Some(res) => res,
         };
-        let (mut object_query, mut tile_query, mut event_writer) = system_state.query.get_mut(world);
-        let Ok((entity, object_id, player_marker)) = object_query.get(pathfinding_entity) else{
+        let (mut object_query, mut tile_query, mut event_writer) =
+            system_state.query.get_mut(world);
+        let Ok((entity, object_id, player_marker)) = object_query.get(pathfinding_entity) else {
             world.insert_resource(system_state);
-            return
+            return;
         };
 
-        let Ok((tile_terrain_info, tile_player_marker, tile_color)) = tile_query.get(node_entity) else{
+        let Ok((tile_terrain_info, tile_player_marker, tile_color)) = tile_query.get(node_entity)
+        else {
             world.insert_resource(system_state);
-            return
+            return;
         };
 
         if tile_terrain_info.terrain_type.name != String::from("BasicColorable") {
@@ -286,7 +286,8 @@ pub fn handle_color_conflicts(
 
             let Some((_, tile_storage)) = tile_storage_query
                 .iter_mut()
-                .find(|(id, _)| id == &&MapId{ id: 1 })else {
+                .find(|(id, _)| id == &&MapId { id: 1 })
+            else {
                 handle_conflicts = false;
                 continue;
             };
@@ -402,7 +403,8 @@ pub fn handle_color_conflict_guarantees(
         {
             let Some((_, tile_storage)) = tile_storage_query
                 .iter_mut()
-                .find(|(id, _)| id == &&MapId{ id: 1 })else {
+                .find(|(id, _)| id == &&MapId { id: 1 })
+            else {
                 continue;
             };
 

@@ -3,7 +3,7 @@ use crate::color_system::ColorConflictCallback;
 use crate::pathfinding::{check_if_tile_is_colorable, IsColorableNodeCheck, NodeIsPlayersCheck};
 use bevy::ecs::system::SystemState;
 use bevy::log::info_span;
-use bevy::prelude::{Component, Entity, FromReflect, Mut, Query, Reflect, Resource, unwrap, With, Without, World};
+use bevy::prelude::{Component, Entity, FromReflect, Mut, Query, Reflect, Resource, With, Without, World};
 use bevy::utils::hashbrown::HashMap;
 
 use crate::mapping::map::MapTileStorage;
@@ -18,7 +18,7 @@ use bevy_ggf::player::PlayerMarker;
 #[derive(Resource)]
 pub struct PulserQueryState {
     pub query:
-        SystemState<Query<'static, 'static, (&'static ObjectGridPosition, &'static PlayerMarker)>>,
+        SystemState<Query<'static, 'static, (&'static ObjectGridPosition, &'static PlayerMarker, &'static Building<Pulser>)>>,
 }
 
 #[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
@@ -92,7 +92,7 @@ impl PathfindAlgorithm<TilePos, Node, Building<Pulser>> for PulserPathfind {
         world.resource_scope(|mut world, maptile_storage: Mut<MapTileStorage>|{
             let mut pulser_query_state = match world.remove_resource::<PulserQueryState>() {
                 None => {                    
-                    let system_state: SystemState<Query<(&ObjectGridPosition, &PlayerMarker)>> = SystemState::new(world);
+                    let system_state: SystemState<Query<(&ObjectGridPosition, &PlayerMarker, &Building<Pulser>)>> = SystemState::new(world);
                     PulserQueryState{
                     query: system_state,
                 }}
@@ -100,12 +100,13 @@ impl PathfindAlgorithm<TilePos, Node, Building<Pulser>> for PulserPathfind {
             };
             let object_query = pulser_query_state.query.get_mut(world);
 
-            let Ok((object_grid_position, player_marker)) = object_query.get(pathfind_entity) else{
+            let Ok((object_grid_position, player_marker, pulser)) = object_query.get(pathfind_entity) else{
                 world.insert_resource(pulser_query_state);
                 return ();
             };
             let object_grid_position = object_grid_position.clone();
             let player_pathing_id = player_marker.id();
+            let max_tiles = pulser.building_type.max_pulse_tiles;
 
             pathfind_map.new_pathfind_map(object_grid_position.tile_position);
 
@@ -138,7 +139,7 @@ impl PathfindAlgorithm<TilePos, Node, Building<Pulser>> for PulserPathfind {
 
             // TODO: Create a resource or something that we can use to store all the game stats so that the
             // strength isnt hardcoded anymore
-            while !unvisited_nodes.is_empty() && tiles_changed < 2 {
+            while !unvisited_nodes.is_empty() && tiles_changed < max_tiles{
                 unvisited_nodes.sort_by(|x, y| x.move_cost.partial_cmp(&y.move_cost).unwrap());
 
                 let Some(current_node) = unvisited_nodes.get(0) else {

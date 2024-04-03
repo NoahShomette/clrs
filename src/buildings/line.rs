@@ -44,11 +44,12 @@ pub fn simulate_lines(
 ) {
     let Some((_, _, tile_storage, tilemap_size)) = tile_storage_query
         .iter_mut()
-        .find(|(_, id, _, _)| id == &&MapId{ id: 1 })else{
+        .find(|(_, id, _, _)| id == &&MapId { id: 1 })
+    else {
         return;
     };
 
-    for (entity, id, player_marker, pulser, object_grid_position) in pulsers.iter() {
+    for (entity, id, player_marker, line, object_grid_position) in pulsers.iter() {
         let mut tiles_info: HashMap<TilePos, TileNode> = HashMap::new();
 
         // insert the starting node at the moving objects grid position
@@ -109,7 +110,7 @@ pub fn simulate_lines(
                 }
 
                 if !tile_cost_check(
-                    pulser.building_type.strength,
+                    line.building_type.strength,
                     &neighbor.0,
                     &current_node.tile_pos,
                     &mut tiles_info,
@@ -135,6 +136,17 @@ pub fn simulate_lines(
                         unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
                             "Is safe because we know we add the node in at the beginning of this loop",
                         ));
+                    }
+
+                    for i in 0..2 {
+                        if convert_tile(
+                            id,
+                            &player_marker.id(),
+                            neighbor.0,
+                            tile_terrain_info,
+                            &options,
+                            &mut event_writer,
+                        ) {}
                     }
                 }
             }

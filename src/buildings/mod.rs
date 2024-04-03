@@ -231,11 +231,11 @@ impl GameCommand for SpawnBuilding {
                                 object_type: game_data.object_types.get("Line").unwrap().clone(),
                             },
                             Building {
-                                building_type: Line { strength: 8 },
+                                building_type: Line { strength: 12 },
                             },
                             BuildingCooldown {
-                                timer: Timer::from_seconds(0.15, TimerMode::Once),
-                                timer_reset: 0.15,
+                                timer: Timer::from_seconds(0.35, TimerMode::Once),
+                                timer_reset: 0.35,
                             },
                             BuildingMarker::default(),
                         ),
@@ -318,7 +318,7 @@ pub fn destroy_buildings(
         }
 
         if destroy_ability {
-            println!("killing buildings");
+            //println!("killing buildings");
             commands.entity(building_entity).insert(DespawnObject);
             tile_object_stacks.decrement_object_class_count(object_stacking_class);
         }

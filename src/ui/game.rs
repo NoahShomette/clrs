@@ -638,7 +638,7 @@ fn handle_selected_button(
     >,
 ) {
     if !building_changed.is_empty() {
-        println!("building changed is full");
+        //println!("building changed is full");
         for (button, option_old_selection, option_nsb, mut interaction) in
             building_buttons.iter_mut()
         {
