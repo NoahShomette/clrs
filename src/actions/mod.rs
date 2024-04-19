@@ -2,10 +2,12 @@ use crate::abilities::Abilities;
 use crate::actions::game_control::{place_ability, place_building};
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::TilePos;
+use bevy_ggf::game_core::saving::{BinaryComponentId, SaveId};
 use bevy_ggf::game_core::Game;
-use bevy_ggf::mapping::tiles::Tile;
+use bevy_ggf::mapping::tiles::{Tile, TilePosition};
 use bevy_ggf::object::Object;
 use bevy_ggf::player::{Player, PlayerMarker};
+use serde::{Deserialize, Serialize};
 
 use crate::buildings::BuildingTypes;
 use crate::game::{simulate_game, GameBuildSettings, GameData};
@@ -26,19 +28,19 @@ impl Plugin for ActionsPlugin {
         app.add_system(
             place_building
                 .after(simulate_game)
-                .in_schedule(CoreSchedule::FixedUpdate)
+                .in_schedule(CoreSchedule::Main)
                 .run_if(in_state(GameState::Playing)),
         );
         app.add_system(
             place_ability
                 .after(place_building)
-                .in_schedule(CoreSchedule::FixedUpdate)
+                .in_schedule(CoreSchedule::Main)
                 .run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-#[derive(Default, Component, Reflect, FromReflect)]
+#[derive(Default, Component, Reflect, FromReflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub struct Actions {
     pub try_place_building: bool,
@@ -48,8 +50,26 @@ pub struct Actions {
     pub selected_building: BuildingTypes,
     pub selected_ability: Abilities,
     pub target_world_pos: bool,
-    pub building_tile_pos: Option<TilePos>,
-    pub ability_tile_pos: Option<TilePos>,
+    pub building_tile_pos: Option<TilePosition>,
+    pub ability_tile_pos: Option<TilePosition>,
+}
+
+impl SaveId for Actions {
+    fn save_id(&self) -> BinaryComponentId {
+        21
+    }
+
+    fn save_id_const() -> BinaryComponentId
+    where
+        Self: Sized,
+    {
+        21
+    }
+
+    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
+    fn to_binary(&self) -> Option<Vec<u8>> {
+        bincode::serialize(self).ok()
+    }
 }
 
 #[derive(Default, Resource)]

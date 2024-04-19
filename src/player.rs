@@ -2,20 +2,40 @@ use crate::color_system::{increase_building_points, TileColor, TileColorStrength
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy::window::PrimaryWindow;
+use bevy_ggf::game_core::saving::{BinaryComponentId, SaveId};
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::player::{Player, PlayerMarker};
 use ns_defaults::camera::CursorWorldPos;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 pub struct PlayerPlugin;
 
 #[derive(
-    Component, Reflect, FromReflect, Default, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd,
+    Component, Reflect, FromReflect, Default, Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Serialize, Deserialize
 )]
 #[reflect(Component)]
 pub struct PlayerPoints {
     pub building_points: u32,
     pub ability_points: u32,
+}
+
+impl SaveId for PlayerPoints {
+    fn save_id(&self) -> BinaryComponentId {
+        19
+    }
+
+    fn save_id_const() -> BinaryComponentId
+    where
+        Self: Sized,
+    {
+        19
+    }
+
+    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
+    fn to_binary(&self) -> Option<Vec<u8>> {
+        bincode::serialize(self).ok()
+    }
 }
 
 /// This plugin handles player related stuff like movement

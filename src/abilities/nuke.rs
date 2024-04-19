@@ -59,15 +59,15 @@ pub fn simulate_nukes(
         let mut tiles_info: HashMap<TilePos, TileNode> = HashMap::new();
         // insert the starting node at the moving objects grid position
         tiles_info.insert(
-            object_grid_position.tile_position,
+            object_grid_position.tile_position.into(),
             TileNode {
-                tile_pos: object_grid_position.tile_position,
-                prior_node: object_grid_position.tile_position,
+                tile_pos: object_grid_position.tile_position.into(),
+                prior_node: object_grid_position.tile_position.into(),
                 cost: Some(0),
             },
         );
         event_writer.send(ColorConflictGuarantees {
-            tile_pos: object_grid_position.tile_position,
+            tile_pos: object_grid_position.tile_position.into(),
             casting_player: player_marker.id(),
             affect_casting_player: true,
             affect_neutral: true,
@@ -77,8 +77,8 @@ pub fn simulate_nukes(
 
         // unvisited nodes
         let mut unvisited_tiles: Vec<TileNode> = vec![TileNode {
-            tile_pos: object_grid_position.tile_position,
-            prior_node: object_grid_position.tile_position,
+            tile_pos: object_grid_position.tile_position.into(),
+            prior_node: object_grid_position.tile_position.into(),
             cost: Some(0),
         }];
         let mut visited_nodes: Vec<TilePos> = vec![];

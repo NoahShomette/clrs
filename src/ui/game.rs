@@ -505,7 +505,7 @@ fn setup_menu(
                                 background_color: Color::rgba(0.65, 0.65, 0.1, 0.0).into(),
                                 ..default()
                             })
-                            .insert(PlayerCubesParent)
+                            .insert((PlayerCubesParent, GameUiThing))
                             .with_children(|mut parent| {
                                 generate_all_player_cubes(
                                     &mut parent,
@@ -995,7 +995,7 @@ where
                         position: UiRect::new(
                             Val::Px(35.0),
                             Val::Px(0.0),
-                            Val::Px(-35.0),
+                            Val::Px(-30.0),
                             Val::Px(0.0),
                         ),
                         ..default()

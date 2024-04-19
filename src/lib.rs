@@ -10,6 +10,7 @@ mod framework;
 mod game;
 mod loading;
 mod mapping;
+mod objects;
 mod pathfinding;
 mod player;
 mod ui;
@@ -33,6 +34,8 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ggf::BggfDefaultPlugins;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use objects::ObjectsPlugin;
 
 /// Generic Game State
 /// Update with a separate Pause state eventually
@@ -84,12 +87,14 @@ impl Plugin for GamePlugin {
             .add_plugin(PlayerPlugin)
             .add_plugin(GameCorePlugin)
             .add_plugin(FrameworkPlugin)
-            .add_plugin(MapPlugin);
+            .add_plugin(MapPlugin)
+            .add_plugin(ObjectsPlugin);
 
         #[cfg(debug_assertions)]
         {
             app.add_plugin(FrameTimeDiagnosticsPlugin::default())
-                .add_plugin(LogDiagnosticsPlugin::default());
+                .add_plugin(LogDiagnosticsPlugin::default())
+                .add_plugin(WorldInspectorPlugin::new());
         }
     }
 }

@@ -2,6 +2,8 @@ pub mod line;
 pub mod pulser;
 pub mod scatter;
 
+use std::time::{Duration, SystemTime};
+
 use crate::buildings::line::Line;
 use crate::buildings::pulser::Pulser;
 use crate::buildings::scatter::Scatters;
@@ -18,12 +20,14 @@ use bevy_ecs_tilemap::prelude::{TileStorage, TilemapSize};
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::game_core::change_detection::DespawnObject;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
+use bevy_ggf::game_core::saving::{BinaryComponentId, SaveId};
 use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
 use bevy_ggf::mapping::terrain::{TerrainClass, TileTerrainInfo};
 use bevy_ggf::mapping::tiles::{ObjectStackingClass, StackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId, ObjectInfo};
 use bevy_ggf::player::{Player, PlayerMarker};
+use serde::{Deserialize, Serialize};
 
 pub trait SpawnBuildingExt {
     fn spawn_building(
@@ -79,14 +83,16 @@ impl GameCommand for SpawnBuilding {
 
         let Some((entity, _, mut player_points)) = players
             .iter_mut()
-            .find(|(_, id, _)| id.id() == self.player_id)else {
+            .find(|(_, id, _)| id.id() == self.player_id)
+        else {
             world.insert_resource(game_data);
             return Err("Failed to Find Player ID".parse().unwrap());
         };
 
         let Some((player_marker, _, _, tile_terrain_info, tile_object_stacks)) = tiles
             .iter()
-            .find(|(_, id, _, _, _)| id == &&self.target_tile_pos)else {
+            .find(|(_, id, _, _, _)| id == &&self.target_tile_pos)
+        else {
             world.insert_resource(game_data);
             return Err("Failed to Find target tile pos".parse().unwrap());
         };
@@ -126,7 +132,7 @@ impl GameCommand for SpawnBuilding {
                     let mut spawn = game_commands.spawn_object(
                         (
                             ObjectGridPosition {
-                                tile_position: self.target_tile_pos,
+                                tile_position: self.target_tile_pos.into(),
                             },
                             ObjectStackingClass {
                                 stack_class: game_data
@@ -150,6 +156,7 @@ impl GameCommand for SpawnBuilding {
                                 timer_reset: 0.15,
                             },
                             BuildingMarker::default(),
+                            Simulate,
                         ),
                         self.target_tile_pos,
                         MapId { id: 1 },
@@ -172,7 +179,7 @@ impl GameCommand for SpawnBuilding {
                     let mut spawn = game_commands.spawn_object(
                         (
                             ObjectGridPosition {
-                                tile_position: self.target_tile_pos,
+                                tile_position: self.target_tile_pos.into(),
                             },
                             ObjectStackingClass {
                                 stack_class: game_data
@@ -196,6 +203,7 @@ impl GameCommand for SpawnBuilding {
                                 timer_reset: 0.13,
                             },
                             BuildingMarker::default(),
+                            Simulate,
                         ),
                         self.target_tile_pos,
                         MapId { id: 1 },
@@ -217,7 +225,7 @@ impl GameCommand for SpawnBuilding {
                     let mut spawn = game_commands.spawn_object(
                         (
                             ObjectGridPosition {
-                                tile_position: self.target_tile_pos,
+                                tile_position: self.target_tile_pos.into(),
                             },
                             ObjectStackingClass {
                                 stack_class: game_data
@@ -238,6 +246,7 @@ impl GameCommand for SpawnBuilding {
                                 timer_reset: 0.35,
                             },
                             BuildingMarker::default(),
+                            Simulate,
                         ),
                         self.target_tile_pos,
                         MapId { id: 1 },
@@ -292,13 +301,18 @@ pub fn destroy_buildings(
     {
         let Some((_, tile_storage)) = tile_storage_query
             .iter_mut()
-            .find(|(id, _)| id == &&MapId { id: 1 })else {
+            .find(|(id, _)| id == &&MapId { id: 1 })
+        else {
             continue;
         };
 
-        let tile_entity = tile_storage.get(&object_grid_pos.tile_position).unwrap();
+        let tile_entity = tile_storage
+            .get(&object_grid_pos.tile_position.into())
+            .unwrap();
 
-        let Ok((entity, tile_terrain_info, tile_marker, mut tile_object_stacks)) = tiles.get_mut(tile_entity) else {
+        let Ok((entity, tile_terrain_info, tile_marker, mut tile_object_stacks)) =
+            tiles.get_mut(tile_entity)
+        else {
             continue;
         };
         let mut destroy_ability = false;
@@ -326,15 +340,37 @@ pub fn destroy_buildings(
 }
 
 pub fn update_building_timers(
-    mut timers: Query<(Entity, &mut BuildingCooldown), Without<Activate>>,
+    mut timers: Query<
+        (
+            Entity,
+            &mut BuildingCooldown,
+            Option<&TimeSimulatingStopped>,
+        ),
+        (Without<Activate>, With<Simulate>),
+    >,
     mut commands: Commands,
-    mut time: Res<Time>,
+    time: Res<Time>,
 ) {
-    for (entity, mut timer) in timers.iter_mut() {
-        timer.timer.tick(time.delta());
-        if timer.timer.finished() {
-            commands.entity(entity).insert(Activate);
-            timer.timer = Timer::from_seconds(timer.timer_reset, TimerMode::Once);
+    for (entity, mut timer, opt_time_simulating_stopped) in timers.iter_mut() {
+        if let Some(time_simulating_stopped) = opt_time_simulating_stopped {
+            if time_simulating_stopped
+                .time_stopped
+                .elapsed()
+                .unwrap_or(Duration::default())
+                > timer.timer.remaining()
+            {
+                commands
+                    .entity(entity)
+                    .insert(Activate)
+                    .remove::<TimeSimulatingStopped>();
+                timer.timer = Timer::from_seconds(timer.timer_reset, TimerMode::Once);
+            }
+        } else {
+            timer.timer.tick(time.delta());
+            if timer.timer.finished() {
+                commands.entity(entity).insert(Activate);
+                timer.timer = Timer::from_seconds(timer.timer_reset, TimerMode::Once);
+            }
         }
     }
 }
@@ -342,22 +378,168 @@ pub fn update_building_timers(
 #[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
 pub struct BuildingMarker;
 
-#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
+#[derive(
+    Default,
+    Clone,
+    Eq,
+    Hash,
+    Debug,
+    PartialEq,
+    Component,
+    Reflect,
+    FromReflect,
+    Serialize,
+    Deserialize,
+)]
 pub struct Building<T> {
     pub building_type: T,
 }
 
-#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
+impl SaveId for Building<Pulser> {
+    fn save_id(&self) -> BinaryComponentId {
+        12
+    }
+
+    fn save_id_const() -> BinaryComponentId
+    where
+        Self: Sized,
+    {
+        12
+    }
+
+    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
+    fn to_binary(&self) -> Option<Vec<u8>> {
+        bincode::serialize(self).ok()
+    }
+}
+
+impl SaveId for Building<Scatters> {
+    fn save_id(&self) -> BinaryComponentId {
+        13
+    }
+
+    fn save_id_const() -> BinaryComponentId
+    where
+        Self: Sized,
+    {
+        13
+    }
+
+    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
+    fn to_binary(&self) -> Option<Vec<u8>> {
+        bincode::serialize(self).ok()
+    }
+}
+
+impl SaveId for Building<Line> {
+    fn save_id(&self) -> BinaryComponentId {
+        14
+    }
+
+    fn save_id_const() -> BinaryComponentId
+    where
+        Self: Sized,
+    {
+        14
+    }
+
+    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
+    fn to_binary(&self) -> Option<Vec<u8>> {
+        bincode::serialize(self).ok()
+    }
+}
+
+#[derive(
+    Default,
+    Clone,
+    Eq,
+    Hash,
+    Debug,
+    PartialEq,
+    Component,
+    Reflect,
+    FromReflect,
+    Serialize,
+    Deserialize,
+)]
 pub struct Activate;
 
-#[derive(Default, Clone, Debug, Component, Reflect, FromReflect)]
+/// Marker component that says this component should be simulated
+#[derive(
+    Default,
+    Clone,
+    Eq,
+    Hash,
+    Debug,
+    PartialEq,
+    Component,
+    Reflect,
+    FromReflect,
+    Serialize,
+    Deserialize,
+)]
+pub struct Simulate;
+
+/// Component inserted onto a building or ability when it is no longer being simulated to save the state needed to resimulate it when it should be.
+#[derive(Clone, Eq, Hash, Debug, PartialEq, Component, Serialize, Deserialize)]
+pub struct TimeSimulatingStopped {
+    pub time_stopped: SystemTime,
+}
+
+impl SaveId for Activate {
+    fn save_id(&self) -> BinaryComponentId {
+        16
+    }
+
+    fn save_id_const() -> BinaryComponentId
+    where
+        Self: Sized,
+    {
+        16
+    }
+
+    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
+    fn to_binary(&self) -> Option<Vec<u8>> {
+        bincode::serialize(self).ok()
+    }
+}
+
+#[derive(Default, Clone, Debug, Component, Reflect, FromReflect, Serialize, Deserialize)]
 pub struct BuildingCooldown {
     pub timer: Timer,
     pub timer_reset: f32,
 }
 
+impl SaveId for BuildingCooldown {
+    fn save_id(&self) -> BinaryComponentId {
+        17
+    }
+
+    fn save_id_const() -> BinaryComponentId
+    where
+        Self: Sized,
+    {
+        17
+    }
+
+    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
+    fn to_binary(&self) -> Option<Vec<u8>> {
+        bincode::serialize(self).ok()
+    }
+}
+
 #[derive(
-    Default, Clone, Copy, Eq, Hash, Debug, PartialEq, serde::Deserialize, Reflect, FromReflect,
+    Default,
+    Clone,
+    Copy,
+    Eq,
+    Hash,
+    Debug,
+    PartialEq,
+    serde::Deserialize,
+    Reflect,
+    FromReflect,
+    Serialize,
 )]
 pub enum BuildingTypes {
     #[default]
@@ -413,7 +595,9 @@ pub fn tile_cost_check(
     move_from_tile_pos: &TilePos,
     tile_nodes: &mut HashMap<TilePos, TileNode>,
 ) -> bool {
-    let Some((tile_node, move_from_tile_node)) = get_two_node_mut(tile_nodes, *tile_pos, *move_from_tile_pos) else {
+    let Some((tile_node, move_from_tile_node)) =
+        get_two_node_mut(tile_nodes, *tile_pos, *move_from_tile_pos)
+    else {
         return false;
     };
 

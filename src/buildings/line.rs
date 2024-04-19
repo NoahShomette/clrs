@@ -13,8 +13,21 @@ use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{ObjectGridPosition, ObjectId};
 use bevy_ggf::player::PlayerMarker;
+use serde::{Deserialize, Serialize};
 
-#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
+#[derive(
+    Default,
+    Clone,
+    Eq,
+    Hash,
+    Debug,
+    PartialEq,
+    Component,
+    Reflect,
+    FromReflect,
+    Serialize,
+    Deserialize,
+)]
 pub struct Line {
     pub strength: u32,
 }
@@ -54,24 +67,24 @@ pub fn simulate_lines(
 
         // insert the starting node at the moving objects grid position
         tiles_info.insert(
-            object_grid_position.tile_position,
+            object_grid_position.tile_position.into(),
             TileNode {
-                tile_pos: object_grid_position.tile_position,
-                prior_node: object_grid_position.tile_position,
+                tile_pos: object_grid_position.tile_position.into(),
+                prior_node: object_grid_position.tile_position.into(),
                 cost: Some(0),
             },
         );
 
         event_writer.send(ColorConflictEvent {
             from_object: *id,
-            tile_pos: object_grid_position.tile_position,
+            tile_pos: object_grid_position.tile_position.into(),
             player: player_marker.id(),
         });
 
         // unvisited nodes
         let mut unvisited_tiles: Vec<TileNode> = vec![TileNode {
-            tile_pos: object_grid_position.tile_position,
-            prior_node: object_grid_position.tile_position,
+            tile_pos: object_grid_position.tile_position.into(),
+            prior_node: object_grid_position.tile_position.into(),
             cost: Some(0),
         }];
         let mut visited_nodes: Vec<TilePos> = vec![];

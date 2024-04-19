@@ -1,4 +1,7 @@
 use crate::game::GameBuildSettings;
+use crate::mapping::map::MapTileStorage;
+use crate::mapping::MapTileIndex;
+use crate::objects::ObjectIndex;
 use crate::GameState;
 use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::prelude::{
@@ -13,7 +16,6 @@ use bevy_ggf::object::{Object, ObjectGridPosition};
 use bevy_ggf::player::{Player, PlayerMarker};
 use bevy_vector_shapes::prelude::Canvas;
 use image::imageops::tile;
-use crate::mapping::map::MapTileStorage;
 
 #[derive(Default, Resource)]
 pub struct GameEnded {
@@ -44,6 +46,8 @@ pub fn cleanup_game(
     commands.remove_resource::<Game>();
     commands.remove_resource::<MapTileStorage>();
     commands.init_resource::<GameBuildSettings>();
+    commands.insert_resource(MapTileIndex::default());
+    commands.insert_resource(ObjectIndex::default());
 }
 
 pub fn check_game_ended(

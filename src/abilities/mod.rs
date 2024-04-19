@@ -2,10 +2,12 @@ pub mod expand;
 pub mod fortify;
 pub mod nuke;
 
+use std::time::Duration;
+
 use crate::abilities::expand::Expand;
 use crate::abilities::fortify::Fortify;
 use crate::abilities::nuke::Nuke;
-use crate::buildings::Activate;
+use crate::buildings::{Activate, Simulate, TimeSimulatingStopped};
 use crate::game::GameData;
 use crate::player::PlayerPoints;
 use bevy::ecs::system::SystemState;
@@ -23,6 +25,7 @@ use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId, ObjectInfo};
 use bevy_ggf::player::{Player, PlayerMarker};
+use serde::Deserialize;
 
 pub trait SpawnAbilityExt {
     fn spawn_ability(
@@ -72,9 +75,10 @@ impl GameCommand for SpawnAbility {
 
         let Some((entity, _, mut player_points)) = players
             .iter_mut()
-            .find(|(_, id, _)| id.id() == self.player_id)else{
+            .find(|(_, id, _)| id.id() == self.player_id)
+        else {
             world.insert_resource(game_data);
-            return Err("Failed to Find Player ID".parse().unwrap())
+            return Err("Failed to Find Player ID".parse().unwrap());
         };
 
         let mut game_commands = GameCommands::new();
@@ -91,7 +95,7 @@ impl GameCommand for SpawnAbility {
                     let mut spawn = game_commands.spawn_object(
                         (
                             ObjectGridPosition {
-                                tile_position: self.target_tile_pos,
+                                tile_position: self.target_tile_pos.into(),
                             },
                             ObjectStackingClass {
                                 stack_class: game_data
@@ -119,6 +123,7 @@ impl GameCommand for SpawnAbility {
                             AbilityMarker {
                                 requires_player_territory: false,
                             },
+                            Simulate,
                         ),
                         self.target_tile_pos,
                         MapId { id: 1 },
@@ -132,15 +137,15 @@ impl GameCommand for SpawnAbility {
             Abilities::Fortify => {
                 let Some((player_marker, _, _, tile_terrain_info)) = tiles
                     .iter()
-                    .find(|(_, id, _, _)| id == &&self.target_tile_pos)else {
-                    
+                    .find(|(_, id, _, _)| id == &&self.target_tile_pos)
+                else {
                     world.insert_resource(game_data);
-                    return Err("Failed to Find Fortify Tile Pos".parse().unwrap())
+                    return Err("Failed to Find Fortify Tile Pos".parse().unwrap());
                 };
 
                 let Some(player_marker) = player_marker else {
                     world.insert_resource(game_data);
-                    return Err("Tile doesnt contain a player marker".parse().unwrap())
+                    return Err("Tile doesnt contain a player marker".parse().unwrap());
                 };
 
                 if tile_terrain_info.terrain_type.terrain_class
@@ -161,7 +166,7 @@ impl GameCommand for SpawnAbility {
                     let mut spawn = game_commands.spawn_object(
                         (
                             ObjectGridPosition {
-                                tile_position: self.target_tile_pos,
+                                tile_position: self.target_tile_pos.into(),
                             },
                             ObjectStackingClass {
                                 stack_class: game_data
@@ -189,6 +194,7 @@ impl GameCommand for SpawnAbility {
                             AbilityMarker {
                                 requires_player_territory: false,
                             },
+                            Simulate,
                         ),
                         self.target_tile_pos,
                         MapId { id: 1 },
@@ -203,10 +209,10 @@ impl GameCommand for SpawnAbility {
             Abilities::Expand => {
                 let Some((_, _, _, tile_terrain_info)) = tiles
                     .iter()
-                    .find(|(_, id, _, _)| id == &&self.target_tile_pos)else {
-
+                    .find(|(_, id, _, _)| id == &&self.target_tile_pos)
+                else {
                     world.insert_resource(game_data);
-                    return Err("Failed to Find Fortify Tile Pos".parse().unwrap())
+                    return Err("Failed to Find Fortify Tile Pos".parse().unwrap());
                 };
 
                 if tile_terrain_info.terrain_type.terrain_class
@@ -227,7 +233,7 @@ impl GameCommand for SpawnAbility {
                     let mut spawn = game_commands.spawn_object(
                         (
                             ObjectGridPosition {
-                                tile_position: self.target_tile_pos,
+                                tile_position: self.target_tile_pos.into(),
                             },
                             ObjectStackingClass {
                                 stack_class: game_data
@@ -255,6 +261,7 @@ impl GameCommand for SpawnAbility {
                             AbilityMarker {
                                 requires_player_territory: false,
                             },
+                            Simulate,
                         ),
                         self.target_tile_pos,
                         MapId { id: 1 },
@@ -294,11 +301,14 @@ pub fn destroy_abilities(
     {
         let Some((_, tile_storage)) = tile_storage_query
             .iter_mut()
-            .find(|(id, _)| id == &&MapId { id: 1 })else {
+            .find(|(id, _)| id == &&MapId { id: 1 })
+        else {
             continue;
         };
 
-        let tile_entity = tile_storage.get(&object_grid_pos.tile_position).unwrap();
+        let tile_entity = tile_storage
+            .get(&object_grid_pos.tile_position.into())
+            .unwrap();
 
         let Ok((entity, mut tile_object_stacks)) = tiles.get_mut(tile_entity) else {
             continue;
@@ -310,16 +320,35 @@ pub fn destroy_abilities(
 }
 
 pub fn update_ability_timers(
-    mut timers: Query<(Entity, &mut AbilityCooldown), Without<Activate>>,
+    mut timers: Query<
+        (Entity, &mut AbilityCooldown, Option<&TimeSimulatingStopped>),
+        (Without<Activate>, With<Simulate>),
+    >,
     mut commands: Commands,
     time: Res<Time>,
 ) {
-    for (entity, mut timer) in timers.iter_mut() {
-        timer.timer.tick(time.delta());
-        if timer.timer.finished() {
-            commands.entity(entity).insert(Activate);
-            timer.timer = Timer::from_seconds(timer.timer_reset, TimerMode::Once);
-            timer.timer_ticks = timer.timer_ticks.saturating_sub(1);
+    for (entity, mut timer, opt_time_simulating_stopped) in timers.iter_mut() {
+        if let Some(time_simulating_stopped) = opt_time_simulating_stopped {
+            if time_simulating_stopped
+                .time_stopped
+                .elapsed()
+                .unwrap_or(Duration::default())
+                > timer.timer.remaining()
+            {
+                commands
+                    .entity(entity)
+                    .insert(Activate)
+                    .remove::<TimeSimulatingStopped>();
+                timer.timer = Timer::from_seconds(timer.timer_reset, TimerMode::Once);
+                timer.timer_ticks = timer.timer_ticks.saturating_sub(1);
+            }
+        } else {
+            timer.timer.tick(time.delta());
+            if timer.timer.finished() {
+                commands.entity(entity).insert(Activate);
+                timer.timer = Timer::from_seconds(timer.timer_reset, TimerMode::Once);
+                timer.timer_ticks = timer.timer_ticks.saturating_sub(1);
+            }
         }
     }
 }
@@ -328,7 +357,17 @@ pub fn update_ability_timers(
 pub struct DestroyAbility;
 
 #[derive(
-    Default, Clone, Copy, Eq, Hash, Debug, PartialEq, serde::Deserialize, Reflect, FromReflect,
+    Default,
+    Clone,
+    Copy,
+    Eq,
+    Hash,
+    Debug,
+    PartialEq,
+    serde::Serialize,
+    Deserialize,
+    Reflect,
+    FromReflect,
 )]
 pub enum Abilities {
     #[default]

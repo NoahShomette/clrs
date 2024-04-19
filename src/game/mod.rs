@@ -7,18 +7,22 @@ use crate::abilities::nuke::simulate_nukes;
 use crate::abilities::{destroy_abilities, update_ability_timers};
 use crate::actions::Actions;
 use crate::ai::{run_ai_ability, run_ai_building};
-use crate::buildings::line::simulate_lines;
-use crate::buildings::pulser::{simulate_pulsers, Pulser};
-use crate::buildings::scatter::simulate_scatterers;
+use crate::buildings::line::{simulate_lines, Line};
+use crate::buildings::pulser::{
+    create_pulser_cache, simulate_pulsers, simulate_pulsers_from_cache, Pulser, PulserCachedMap,
+};
+use crate::buildings::scatter::{simulate_scatterers, Scatters};
 use crate::buildings::{
-    destroy_buildings, update_building_timers, Activate, Building, BuildingCooldown, BuildingMarker,
+    destroy_buildings, update_building_timers, Activate, Building, BuildingCooldown,
+    BuildingMarker, Simulate,
 };
 use crate::color_system::{
     handle_color_conflict_guarantees, handle_color_conflicts, update_color_conflicts,
     ColorConflictEvent, ColorConflictGuarantees, ColorConflicts, PlayerTileChangedCount, TileColor,
 };
+use crate::draw::draw::draw_objects;
 use crate::game::end_game::{check_game_ended, cleanup_game, update_game_end_state};
-use crate::game::state::update_game_state;
+use crate::game::state::update_main_world_game_state;
 use crate::level_loader::{LevelHandle, Levels};
 use crate::mapping::map::MapCommandsExt;
 use crate::player::{update_player_points, PlayerPoints};
@@ -60,14 +64,14 @@ impl Plugin for GameCorePlugin {
                     .run_if(in_state(GameState::Playing))
                     .in_schedule(CoreSchedule::FixedUpdate),
             )
-            .add_system(
-                update_game_state
-                    .run_if(in_state(GameState::Playing))
+            .add_systems(
+                (update_main_world_game_state, apply_system_buffers)
+                    .distributive_run_if(in_state(GameState::Playing))
                     .after(simulate_game)
                     .in_schedule(CoreSchedule::FixedUpdate),
             );
 
-        app.insert_resource(FixedTime::new_from_secs(0.01));
+        app.insert_resource(FixedTime::new_from_secs(0.03));
 
         app.register_type::<GameBuildSettings>();
     }
@@ -421,10 +425,11 @@ pub fn start_game(world: &mut World) {
                         y: game_build_settings.map_size - inset_count,
                     },
                 };
+                let tile_position = player_spawn_pos.into();
                 commands.push(Box::new(game_commands.spawn_object(
                     (
                         ObjectGridPosition {
-                            tile_position: player_spawn_pos,
+                            tile_position: tile_position,
                         },
                         ObjectStackingClass {
                             stack_class: stacking_class_building.clone(),
@@ -444,6 +449,7 @@ pub fn start_game(world: &mut World) {
                             timer_reset: 0.15,
                         },
                         BuildingMarker::default(),
+                        Simulate,
                     ),
                     player_spawn_pos,
                     MapId { id: 1 },
@@ -467,7 +473,7 @@ pub fn start_game(world: &mut World) {
                 commands.push(Box::new(game_commands.spawn_object(
                     (
                         ObjectGridPosition {
-                            tile_position: player_spawn_pos,
+                            tile_position: player_spawn_pos.into(),
                         },
                         ObjectStackingClass {
                             stack_class: stacking_class_building.clone(),
@@ -539,7 +545,10 @@ pub fn setup_game(
             update_building_timers,
             update_ability_timers,
             apply_system_buffers,
-            simulate_pulsers,
+            create_pulser_cache,
+            apply_system_buffers,
+            //simulate_pulsers,
+            simulate_pulsers_from_cache,
             simulate_lines,
             simulate_scatterers,
             simulate_nukes,
@@ -580,7 +589,8 @@ pub fn setup_game(
             GameBuilder::<TestRunner>::new_game_with_commands(commands, TestRunner { schedule })
         }
     };
-
+    game.default_components_track_changes();
+    game.add_default_registrations();
     game.setup_movement(tile_movement_costs);
     game.setup_mapping();
 
@@ -616,23 +626,26 @@ pub fn setup_game(
         .init_resource::<Events<ColorConflictGuarantees>>();
     game.game_world.init_resource::<Time>();
 
+    game.register_component::<Player>();
     game.register_component::<ObjectInfo>();
 
     game.register_component::<Building<Pulser>>();
+    game.register_component::<Building<Line>>();
+    game.register_component::<Building<Scatters>>();
+
+    game.register_component::<PulserCachedMap>();
     game.register_component::<Activate>();
     game.register_component::<BuildingCooldown>();
 
     game.register_component::<TileColor>();
-    game.register_resource::<ColorConflicts>();
 
     game.register_component::<PlayerPoints>();
-    game.register_component::<Player>();
     game.register_component::<Actions>();
 
     world.insert_resource(game_data.clone());
     game.game_world.insert_resource(game_data);
     game.game_world
         .insert_resource(PlayerTileChangedCount::default());
-
+    world.insert_resource(game_build_settings);
     game.build(world);
 }

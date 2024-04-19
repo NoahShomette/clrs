@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::mapping::terrain::{TerrainType, TileTerrainInfo};
 use bevy_ggf::mapping::tiles::{
-    BggfTileBundle, BggfTileObjectBundle, Tile, TileObjectStacks, TileObjects,
+    BggfTileBundle, BggfTileObjectBundle, Tile, TileObjectStacks, TileObjects, TilePosition,
 };
 use bevy_ggf::mapping::{Map, MapId, MapIdProvider};
 use bevy_ggf::movement::TerrainMovementCosts;
@@ -96,6 +96,7 @@ impl GameCommand for SpawnRandomMap {
             for x in 0..map_size.x {
                 for y in 0..map_size.y {
                     let tile_pos = TilePos { x, y };
+                    let tile_position: TilePosition = tile_pos.into();
 
                     let tile_entity = world
                         .spawn(BggfTileBundle {
@@ -111,7 +112,7 @@ impl GameCommand for SpawnRandomMap {
                             tile_objects: TileObjects::default(),
                         })
                         .insert(bevy_ggf::game_core::state::Changed::default())
-                        .insert(TileColor::default())
+                        .insert((TileColor::default(), tile_position))
                         .id();
 
                     tile_storage.set(&tile_pos, tile_entity);
@@ -177,6 +178,7 @@ impl GameCommand for SpawnMap {
                         x: x.0 as u32,
                         y: y.0 as u32,
                     };
+                    let tile_position: TilePosition = tile_pos.into();
 
                     let tile_entity = match x.1 {
                         TileType::Colorable => world
@@ -208,7 +210,10 @@ impl GameCommand for SpawnMap {
                                 tile_stack_rules: self.non_colorable_tile_stack_rules.clone(),
                                 tile_objects: TileObjects::default(),
                             })
-                            .insert(bevy_ggf::game_core::state::Changed::default())
+                            .insert((
+                                bevy_ggf::game_core::state::Changed::default(),
+                                tile_position,
+                            ))
                             .id(),
                     };
 
@@ -233,7 +238,7 @@ impl GameCommand for SpawnMap {
             tile_storage: tile_storage.clone(),
             tilemap_size: map_size.clone(),
         });
-        
+
         world
             .entity_mut(tilemap_entity)
             .insert((grid_size, map_type, map_size, tile_storage, tile_size))

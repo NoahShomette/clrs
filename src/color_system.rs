@@ -10,6 +10,7 @@ use bevy::reflect::Reflect;
 use bevy::utils::HashMap;
 use bevy_ecs_tilemap::prelude::TileStorage;
 use bevy_ecs_tilemap::tiles::TilePos;
+use bevy_ggf::game_core::saving::{BinaryComponentId, SaveId};
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::mapping::MapId;
@@ -17,6 +18,7 @@ use bevy_ggf::object::ObjectId;
 use bevy_ggf::pathfinding::PathfindCallback;
 use bevy_ggf::player::{Player, PlayerMarker};
 use rand::{thread_rng, Rng};
+use serde::{Deserialize, Serialize};
 
 pub struct ColorSystemPlugin;
 
@@ -556,7 +558,7 @@ impl ColorConflicts {
     }
 }
 
-#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Reflect, FromReflect)]
+#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Reflect, FromReflect, Serialize, Deserialize)]
 pub enum TileColorStrength {
     #[default]
     Neutral,
@@ -567,10 +569,29 @@ pub enum TileColorStrength {
     Five,
 }
 
-#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
+#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect, Serialize, Deserialize)]
 pub struct TileColor {
     pub tile_color_strength: TileColorStrength,
 }
+
+impl SaveId for TileColor {
+    fn save_id(&self) -> BinaryComponentId {
+        18
+    }
+
+    fn save_id_const() -> BinaryComponentId
+    where
+        Self: Sized,
+    {
+        18
+    }
+
+    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
+    fn to_binary(&self) -> Option<Vec<u8>> {
+        bincode::serialize(self).ok()
+    }
+}
+
 
 impl TileColor {
     pub fn get_scale(&self) -> Vec3 {

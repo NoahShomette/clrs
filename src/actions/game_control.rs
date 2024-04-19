@@ -40,7 +40,7 @@ pub fn place_building(
                     continue;
                 }
             } else if actions.building_tile_pos.is_some() {
-                target_tile_pos = actions.building_tile_pos.unwrap();
+                target_tile_pos = actions.building_tile_pos.unwrap().into();
             } else {
                 continue;
             }
@@ -78,7 +78,7 @@ pub fn place_ability(
                     continue;
                 }
             } else if actions.ability_tile_pos.is_some() {
-                target_tile_pos = actions.ability_tile_pos.unwrap();
+                target_tile_pos = actions.ability_tile_pos.unwrap().into();
             } else {
                 continue;
             }

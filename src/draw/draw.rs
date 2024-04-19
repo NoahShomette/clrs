@@ -15,63 +15,74 @@ use bevy_vector_shapes::prelude::{RectangleBundle, ShapeConfig, ThicknessType};
 use bevy_vector_shapes::render::ShapePipelineType;
 use std::time::Duration;
 
+use super::UpdateTile;
+
 pub const TILE_SIZE: f32 = 32.0;
 pub const TILE_GAP: f32 = 0.0;
 pub const TILE_OUTLINE: f32 = 2.0;
 
 pub const OBJECT_SIZE: f32 = 24.0;
 
+#[derive(Component)]
+pub struct ChildGraphics;
+
+#[derive(Component)]
+pub struct ChildBackgroundGraphics;
+
 pub fn draw_tile_backgrounds(
     game_info: Res<GameData>,
-    tile_query: Query<(Entity, &DrawTile, &TileTerrainInfo, &TilePos)>,
+    tile_query: Query<(Entity, &TileTerrainInfo, &TilePos), (Added<UpdateTile>, Without<Children>)>,
     player_colors: Res<PlayerColors>,
     mut commands: Commands,
 ) {
-    for (entity, _, tile_terrain_info, tile_pos) in tile_query.iter() {
+    for (entity, tile_terrain_info, tile_pos) in tile_query.iter() {
         let card_x = (tile_pos.x as f32 * (TILE_SIZE + TILE_GAP))
             - ((game_info.map_size_x as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
         let card_y = (tile_pos.y as f32 * (TILE_SIZE + TILE_GAP))
             - ((game_info.map_size_y as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
 
         let child = commands
-            .spawn(bevy_vector_shapes::shapes::ShapeBundle::rect(
-                &ShapeConfig {
-                    transform: Transform {
-                        translation: Vec3 {
-                            x: card_x,
-                            y: card_y,
-                            z: 1.0,
+            .spawn((
+                bevy_vector_shapes::shapes::ShapeBundle::rect(
+                    &ShapeConfig {
+                        transform: Transform {
+                            translation: Vec3 {
+                                x: card_x,
+                                y: card_y,
+                                z: 1.0,
+                            },
+                            rotation: Default::default(),
+                            scale: Vec3 {
+                                x: 1.0,
+                                y: 1.0,
+                                z: 1.0,
+                            },
                         },
-                        rotation: Default::default(),
-                        scale: Vec3 {
-                            x: 1.0,
-                            y: 1.0,
-                            z: 1.0,
+                        color: match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
+                            "NonColorable" => player_colors.get_noncolorable(),
+                            _ => player_colors.get_colorable(),
                         },
+                        hollow: false,
+                        cap: Default::default(),
+                        thickness: TILE_OUTLINE,
+                        thickness_type: ThicknessType::World,
+                        corner_radii: Default::default(),
+                        render_layers: None,
+                        alpha_mode: AlphaMode::Blend,
+                        disable_laa: false,
+                        instance_id: 0,
+                        canvas: None,
+                        texture: None,
+                        alignment: Default::default(),
+                        roundness: 0.0,
+                        pipeline: ShapePipelineType::Shape2d,
                     },
-                    color: match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
-                        "NonColorable" => player_colors.get_noncolorable(),
-                        _ => player_colors.get_colorable(),
+                    Vec2 {
+                        x: TILE_SIZE,
+                        y: TILE_SIZE,
                     },
-                    hollow: false,
-                    cap: Default::default(),
-                    thickness: TILE_OUTLINE,
-                    thickness_type: ThicknessType::World,
-                    corner_radii: Default::default(),
-                    render_layers: None,
-                    alpha_mode: AlphaMode::Blend,
-                    disable_laa: false,
-                    instance_id: 0,
-                    canvas: None,
-                    texture: None,
-                    alignment: Default::default(),
-                    roundness: 0.0,
-                    pipeline: ShapePipelineType::Shape2d,
-                },
-                Vec2 {
-                    x: TILE_SIZE,
-                    y: TILE_SIZE,
-                },
+                ),
+                ChildBackgroundGraphics,
             ))
             .id();
 
@@ -79,20 +90,28 @@ pub fn draw_tile_backgrounds(
     }
 }
 
+/// Tiles always get [`UpdateTile`] when changed but only new tiles get [`DrawTile`]
 pub fn draw_tiles(
     game_info: Res<GameData>,
-    tile_query: Query<(
-        Entity,
-        &DrawTile,
-        &TileTerrainInfo,
-        &TilePos,
-        &OldTileState,
-        Option<(&TileColor, &PlayerMarker)>,
-    )>,
+    tile_query: Query<
+        (
+            Entity,
+            &TileTerrainInfo,
+            &TilePos,
+            Option<&OldTileState>,
+            Option<&DrawTile>,
+            Option<&Children>,
+            Option<(&TileColor, &PlayerMarker)>,
+        ),
+        Added<UpdateTile>,
+    >,
+    children_query: Query<&ChildGraphics>,
     player_colors: Res<PlayerColors>,
     mut commands: Commands,
 ) {
-    for (entity, _, tile_terrain_info, tile_pos, old_tile_state, options) in tile_query.iter() {
+    for (entity, tile_terrain_info, tile_pos, old_tile_state, opt_draw_tile, children, options) in
+        tile_query.iter()
+    {
         let card_x = (tile_pos.x as f32 * (TILE_SIZE + TILE_GAP))
             - ((game_info.map_size_x as f32 * (TILE_SIZE + TILE_GAP)) / 2.0);
         let card_y = (tile_pos.y as f32 * (TILE_SIZE + TILE_GAP))
@@ -102,12 +121,18 @@ pub fn draw_tiles(
             EaseFunction::QuadraticInOut,
             Duration::from_millis(100),
             MyColorLens {
-                start: match &old_tile_state.tile_color {
-                    None => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
+                start: match &old_tile_state.is_some() {
+                    false => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
                         "NonColorable" => player_colors.get_noncolorable(),
                         _ => player_colors.get_colorable(),
                     },
-                    Some(_) => player_colors.get_color(old_tile_state.player_id.unwrap()),
+                    true => match old_tile_state.unwrap().player_id.is_some() {
+                        true => player_colors.get_color(old_tile_state.unwrap().player_id.unwrap()),
+                        false => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
+                            "NonColorable" => player_colors.get_noncolorable(),
+                            _ => player_colors.get_colorable(),
+                        },
+                    },
                 },
                 end: match options {
                     None => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
@@ -120,18 +145,27 @@ pub fn draw_tiles(
         )
         .with_repeat_count(RepeatCount::Finite(1));
 
+        let tile_color_size = match old_tile_state.is_some() {
+            true => match &old_tile_state.unwrap().tile_color {
+                Some(tile_color) => tile_color.get_scale(),
+                None => Vec3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 1.0,
+                },
+            },
+            false => Vec3 {
+                x: 0.0,
+                y: 0.0,
+                z: 1.0,
+            },
+        };
+
         let transform_tween = Tween::new(
             EaseFunction::QuadraticInOut,
             Duration::from_millis(200),
             TransformScaleLens {
-                start: match &old_tile_state.tile_color {
-                    None => Vec3 {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 1.0,
-                    },
-                    Some(tile_color) => tile_color.get_scale(),
-                },
+                start: tile_color_size,
                 end: match options {
                     None => Vec3 {
                         x: 0.0,
@@ -144,59 +178,71 @@ pub fn draw_tiles(
         )
         .with_repeat_count(RepeatCount::Finite(1));
 
-        let child = commands
-            .spawn(bevy_vector_shapes::shapes::ShapeBundle::rect(
-                &ShapeConfig {
-                    transform: Transform {
-                        translation: Vec3 {
-                            x: card_x,
-                            y: card_y,
-                            z: 2.0,
-                        },
-                        rotation: Default::default(),
-                        scale: match &old_tile_state.tile_color {
-                            None => Vec3 {
-                                x: 0.0,
-                                y: 0.0,
-                                z: 1.0,
-                            },
-                            Some(tile_color) => tile_color.get_scale(),
-                        },
+        let shape = bevy_vector_shapes::shapes::ShapeBundle::rect(
+            &ShapeConfig {
+                transform: Transform {
+                    translation: Vec3 {
+                        x: card_x,
+                        y: card_y,
+                        z: 2.0,
                     },
-                    color: match options {
-                        None => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
-                            "NonColorable" => player_colors.get_noncolorable(),
-                            _ => player_colors.get_colorable(),
-                        },
-                        Some((_, player_marker)) => player_colors.get_color(player_marker.id()),
+                    rotation: Default::default(),
+                    scale: tile_color_size,
+                },
+                color: match options {
+                    None => match tile_terrain_info.terrain_type.terrain_class.name.as_str() {
+                        "NonColorable" => player_colors.get_noncolorable(),
+                        _ => player_colors.get_colorable(),
                     },
-                    hollow: false,
-                    cap: Default::default(),
-                    thickness: TILE_OUTLINE,
-                    thickness_type: ThicknessType::World,
-                    corner_radii: Default::default(),
-                    render_layers: None,
-                    alpha_mode: AlphaMode::Blend,
-                    disable_laa: false,
-                    instance_id: 0,
-                    canvas: None,
-                    texture: None,
-                    alignment: Default::default(),
-                    roundness: 0.0,
-                    pipeline: ShapePipelineType::Shape2d,
+                    Some((_, player_marker)) => player_colors.get_color(player_marker.id()),
                 },
-                Vec2 {
-                    x: TILE_SIZE,
-                    y: TILE_SIZE,
-                },
-            ))
-            .insert(Animator::new(tween))
-            .insert(Animator::new(transform_tween))
-            .id();
+                hollow: false,
+                cap: Default::default(),
+                thickness: TILE_OUTLINE,
+                thickness_type: ThicknessType::World,
+                corner_radii: Default::default(),
+                render_layers: None,
+                alpha_mode: AlphaMode::Blend,
+                disable_laa: false,
+                instance_id: 0,
+                canvas: None,
+                texture: None,
+                alignment: Default::default(),
+                roundness: 0.0,
+                pipeline: ShapePipelineType::Shape2d,
+            },
+            Vec2 {
+                x: TILE_SIZE,
+                y: TILE_SIZE,
+            },
+        );
+
+        if opt_draw_tile.is_some() {
+            let child = commands
+                .spawn((
+                    ChildGraphics,
+                    shape,
+                    Animator::new(tween),
+                    Animator::new(transform_tween),
+                ))
+                .id();
+            commands.entity(entity).push_children(&[child]);
+            commands.entity(entity).remove::<DrawTile>();
+        } else if children.is_some() {
+            for child in children.unwrap().iter() {
+                if let Ok(_) = children_query.get(*child) {
+                    commands.entity(*child).insert((
+                        shape,
+                        Animator::new(tween),
+                        Animator::new(transform_tween),
+                    ));
+                    break;
+                }
+            }
+        }
 
         commands.entity(entity).remove::<OldTileState>();
-        commands.entity(entity).push_children(&[child]);
-        commands.entity(entity).remove::<DrawTile>();
+        commands.entity(entity).remove::<UpdateTile>();
     }
 }
 

@@ -51,7 +51,13 @@ impl Lens<Rectangle> for MyColorLens {
 pub struct DrawTile;
 
 #[derive(Component)]
+pub struct UpdateTile;
+
+#[derive(Component)]
 pub struct DrawObject;
+
+#[derive(Component)]
+pub struct UpdateObject;
 
 pub fn world_pos_to_tile_pos(world_pos: &Vec2, map_size: &TilemapSize) -> Option<TilePos> {
     let transformed_pos: Vec2 = {
