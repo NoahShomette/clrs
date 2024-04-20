@@ -1,18 +1,14 @@
 use crate::abilities::Abilities;
 use crate::actions::game_control::{place_ability, place_building};
 use bevy::prelude::*;
-use bevy_ecs_tilemap::prelude::TilePos;
 use bevy_ggf::game_core::saving::{BinaryComponentId, SaveId};
-use bevy_ggf::game_core::Game;
-use bevy_ggf::mapping::tiles::{Tile, TilePosition};
-use bevy_ggf::object::Object;
-use bevy_ggf::player::{Player, PlayerMarker};
+use bevy_ggf::mapping::tiles::TilePosition;
+use bevy_ggf::player::PlayerMarker;
 use serde::{Deserialize, Serialize};
 
 use crate::buildings::BuildingTypes;
-use crate::game::{simulate_game, GameBuildSettings, GameData};
-use crate::ui::{MenuNavigation, PlayerColors};
-use crate::GameState;
+use crate::game::simulate_game;
+use crate::{GamePausedState, GameState};
 
 mod game_control;
 
@@ -79,29 +75,26 @@ pub struct PauseGame;
 pub struct UnPauseGame;
 
 fn handle_pause(
-    mut current_state: ResMut<State<GameState>>,
+    mut current_state: ResMut<State<GamePausedState>>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut paused_next_state: ResMut<NextState<GamePausedState>>,
     mut commands: Commands,
     pause_game: Option<Res<PauseGame>>,
     unpause_game: Option<Res<UnPauseGame>>,
 ) {
     match current_state.0 {
-        GameState::Loading => {}
-        GameState::Playing => {
+        GamePausedState::NotPaused => {
             if let Some(pause_game) = pause_game {
-                next_state.set(GameState::Paused);
+                paused_next_state.set(GamePausedState::Paused);
                 commands.remove_resource::<PauseGame>();
             }
         }
-        GameState::Paused => {
+        GamePausedState::Paused => {
             if let Some(unpause_game) = unpause_game {
-                next_state.set(GameState::Playing);
+                paused_next_state.set(GamePausedState::NotPaused);
                 commands.remove_resource::<UnPauseGame>();
             }
         }
-        GameState::Menu => {}
-        GameState::Ended => {}
-        _ => {}
     }
 }
 

@@ -3,6 +3,7 @@ mod end_game;
 mod game;
 mod menu;
 mod pause;
+mod widgets;
 
 use crate::loading::colors_loader::{PalettesAssets, PalettesHandle};
 use crate::loading::FontAssets;
@@ -15,7 +16,6 @@ use bevy::ui::FocusPolicy;
 use bevy::window::PrimaryWindow;
 use bevy_tweening::lens::TransformScaleLens;
 use bevy_tweening::{Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween};
-use std::thread::spawn;
 use std::time::Duration;
 
 pub struct UiPlugin;

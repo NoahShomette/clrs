@@ -2,7 +2,7 @@
 use crate::loading::level_loader::{LevelHandle, Levels};
 use crate::loading::FontAssets;
 use crate::ui::{modal_panel, BasicButton, DisabledButton, ModalStyle, PlayerColors};
-use crate::GameState;
+use crate::{GamePausedState, GameState};
 use bevy::app::AppExit;
 use bevy::prelude::CoreSet::Update;
 use bevy::prelude::*;
@@ -13,13 +13,13 @@ pub struct PauseUiPlugin;
 /// The menu is only drawn during the State `GameState::Menu` and is removed when that state is exited
 impl Plugin for PauseUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(setup_menu.in_schedule(OnEnter(GameState::Paused)))
+        app.add_system(setup_menu.in_schedule(OnEnter(GamePausedState::Paused)))
             .add_system(
                 button_interaction
                     .in_base_set(Update)
-                    .run_if(in_state(GameState::Paused)),
+                    .run_if(in_state(GamePausedState::Paused)),
             )
-            .add_system(cleanup_menu.in_schedule(OnExit(GameState::Paused)));
+            .add_system(cleanup_menu.in_schedule(OnExit(GamePausedState::Paused)));
     }
 }
 
@@ -138,6 +138,7 @@ fn setup_menu(
 
 fn button_interaction(
     mut state: ResMut<NextState<GameState>>,
+    mut paused_state: ResMut<NextState<GamePausedState>>,
     mut exit: EventWriter<AppExit>,
     mut player_colors: ResMut<PlayerColors>,
     keyboard_input: Res<Input<KeyCode>>,
@@ -168,13 +169,14 @@ fn button_interaction(
         }
 
         if let Some(_) = option_pucb {
-            state.set(GameState::Playing);
+            paused_state.set(GamePausedState::NotPaused);
         }
         if let Some(_) = option_cb {
-            state.set(GameState::Playing);
+            paused_state.set(GamePausedState::NotPaused);
         }
         if let Some(_) = option_mmb {
             state.set(GameState::Menu);
+            paused_state.set(GamePausedState::NotPaused);
         }
 
         if let Some(_) = option_qb {

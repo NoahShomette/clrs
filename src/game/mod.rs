@@ -26,12 +26,13 @@ use crate::game::state::update_main_world_game_state;
 use crate::level_loader::{LevelHandle, Levels};
 use crate::mapping::map::MapCommandsExt;
 use crate::player::{update_player_points, PlayerPoints};
-use crate::GameState;
+use crate::{GamePausedState, GameState};
 
 use bevy::app::App;
 use bevy::prelude::CoreSet::Update;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
+use bevy_asset_loader::loading_state::LoadingStateAppExt;
 use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize};
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::runner::{GameRunner, GameRuntime};
@@ -51,17 +52,19 @@ pub struct GameCorePlugin;
 
 impl Plugin for GameCorePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(setup_game_resource.in_schedule(OnEnter(GameState::Menu)))
-            .add_system(start_game.in_schedule(OnEnter(GameState::Playing)))
+        app.init_resource_after_loading_state::<_, GameBuildSettings>(GameState::Loading);
+        app.add_system(start_game.in_schedule(OnEnter(GameState::Playing)))
             .add_system(cleanup_game.in_schedule(OnEnter(GameState::Menu)))
             .add_system(
                 check_game_ended
                     .in_base_set(Update)
-                    .run_if(in_state(GameState::Playing).or_else(in_state(GameState::Paused))),
+                    .run_if(in_state(GameState::Playing)),
             )
             .add_system(
                 simulate_game
-                    .run_if(in_state(GameState::Playing))
+                    .run_if(
+                        in_state(GameState::Playing).and_then(in_state(GamePausedState::NotPaused)),
+                    )
                     .in_schedule(CoreSchedule::FixedUpdate),
             )
             .add_systems(

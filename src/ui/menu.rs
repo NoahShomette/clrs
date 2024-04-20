@@ -3,14 +3,10 @@ use crate::level_loader::{LevelHandle, Levels};
 use crate::loading::FontAssets;
 use crate::GameState;
 use bevy::app::AppExit;
+use bevy::ecs::system::Insert;
 use bevy::prelude::*;
-use std::process::exit;
-use std::thread::spawn;
 
-use crate::ui::{
-    modal_panel, BasicButton, DisabledButton, MenuNavigation, ModalStyle, PlayerColors,
-    UpdateBackgroundWithCurrentPlayerColor, UpdateTextColorWithCurrentPlayerColor,
-};
+use crate::ui::{modal_panel, BasicButton, DisabledButton, ModalStyle, PlayerColors};
 
 pub struct MenuPlugin;
 
@@ -31,6 +27,7 @@ impl Plugin for MenuPlugin {
                 update_enemies_count,
                 update_map_name,
                 update_color_swatches,
+                update_title_text_colors,
             )
                 .chain()
                 .in_set(OnUpdate(GameState::Menu)),
@@ -93,6 +90,9 @@ struct UpdateMapSizeButtonColors;
 #[derive(Component)]
 struct SettingsCloseButton;
 
+#[derive(Component)]
+struct UpdateTitleColors;
+
 pub fn setup_menu(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
@@ -132,14 +132,40 @@ pub fn setup_menu(
                 .with_children(|parent| {
                     parent
                         .spawn(
-                            TextBundle::from_section(
-                                "CLRS",
-                                TextStyle {
-                                    font: font_assets.fira_sans.clone(),
-                                    font_size: 100.0,
-                                    color: player_colors.get_color(0),
-                                },
-                            )
+                            TextBundle::from_sections(vec![
+                                TextSection::new(
+                                    "C",
+                                    TextStyle {
+                                        font: font_assets.fira_sans.clone(),
+                                        font_size: 100.0,
+                                        color: player_colors.get_color(0),
+                                    },
+                                ),
+                                TextSection::new(
+                                    "L",
+                                    TextStyle {
+                                        font: font_assets.fira_sans.clone(),
+                                        font_size: 100.0,
+                                        color: player_colors.get_color(1),
+                                    },
+                                ),
+                                TextSection::new(
+                                    "R",
+                                    TextStyle {
+                                        font: font_assets.fira_sans.clone(),
+                                        font_size: 100.0,
+                                        color: player_colors.get_color(2),
+                                    },
+                                ),
+                                TextSection::new(
+                                    "S",
+                                    TextStyle {
+                                        font: font_assets.fira_sans.clone(),
+                                        font_size: 100.0,
+                                        color: player_colors.get_color(3),
+                                    },
+                                ),
+                            ])
                             .with_text_alignment(TextAlignment::Center)
                             .with_style(Style {
                                 position_type: PositionType::Relative,
@@ -150,7 +176,7 @@ pub fn setup_menu(
                                 ..default()
                             }),
                         )
-                        .insert(UpdateTextColorWithCurrentPlayerColor);
+                        .insert(UpdateTitleColors);
 
                     // node wrapping the actual buttons
                     parent
@@ -195,13 +221,18 @@ pub fn setup_menu(
                                         },
                                     ));
                                 });
+                            let backward_enabled = !game_build_settings.map_type == 0;
+                            let forward_enabled = game_build_settings.map_type > 0
+                                && game_build_settings.map_type < game_build_settings.max_map - 1;
 
                             back_and_forth_button(
                                 parent,
                                 &font_assets,
                                 MenuUiThing,
                                 PrevMapButton,
+                                backward_enabled,
                                 NextMapButton,
+                                forward_enabled,
                                 "MAP",
                             );
 
@@ -230,12 +261,20 @@ pub fn setup_menu(
                                 )
                                 .insert(MapText);
 
+                            let mut backward = game_build_settings.map_size > 30;
+                            let mut forward = game_build_settings.map_size < 100;
+                            if game_build_settings.map_type > 1 {
+                                backward = false;
+                                forward = false;
+                            }
                             back_and_forth_button(
                                 parent,
                                 &font_assets,
                                 MenuUiThing,
                                 DecreaseMapSizeButton,
+                                backward,
                                 IncreaseMapSizeButton,
+                                forward,
                                 "SIZE",
                             );
 
@@ -265,12 +304,17 @@ pub fn setup_menu(
                                 )
                                 .insert(MapSizeText);
 
+                            let backward = game_build_settings.enemy_count != 1;
+                            let forward = game_build_settings.enemy_count != 3;
+
                             back_and_forth_button(
                                 parent,
                                 &font_assets,
                                 MenuUiThing,
                                 DecreasePlayerCountButton,
+                                backward,
                                 IncreasePlayerCountButton,
+                                forward,
                                 "ENEMIES",
                             );
 
@@ -296,12 +340,18 @@ pub fn setup_menu(
                                 )
                                 .insert(PlayerCountText);
 
+                            let backward = player_colors.palette_index != 0;
+                            let forward =
+                                player_colors.palette_index != player_colors.palettes.len() - 1;
+
                             back_and_forth_button(
                                 parent,
                                 &font_assets,
                                 MenuUiThing,
                                 PrevColorButton,
+                                backward,
                                 NextColorButton,
+                                forward,
                                 "CLRS",
                             );
 
@@ -865,6 +915,21 @@ fn update_color_swatches(
     }
 }
 
+fn update_title_text_colors(
+    player_colors: Option<Res<PlayerColors>>,
+    mut interaction_query: Query<(Entity, &mut Text), (With<UpdateTitleColors>,)>,
+) {
+    if let Some(player_colors) = player_colors {
+        for (entity, mut text) in &mut interaction_query {
+            for (i, mut section) in text.sections.iter_mut().enumerate() {
+                if section.style.color != player_colors.get_color(i) {
+                    section.style.color = player_colors.get_color(i);
+                }
+            }
+        }
+    }
+}
+
 fn cleanup_menu(mut commands: Commands, button: Query<Entity, With<MenuUiThing>>) {
     for button in button.iter() {
         commands.entity(button).despawn_recursive();
@@ -876,7 +941,9 @@ fn back_and_forth_button<T, B, F>(
     font_assets: &Res<FontAssets>,
     menu_type: T,
     back_marker: B,
+    back_button_enabled: bool,
     forward_marker: F,
+    forward_button_enabled: bool,
     button_text: &str,
 ) -> Entity
 where
@@ -899,21 +966,25 @@ where
             ..default()
         })
         .with_children(|parent| {
-            parent
-                .spawn(ButtonBundle {
-                    style: Style {
-                        size: Size::new(Val::Px(50.0), Val::Px(50.0)),
-                        margin: UiRect::all(Val::Px(5.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..Default::default()
-                    },
-                    background_color: BackgroundColor::from(Color::DARK_GRAY),
+            let button_color = if back_button_enabled {
+                BackgroundColor::from(Color::GRAY)
+            } else {
+                BackgroundColor::from(Color::DARK_GRAY)
+            };
+            let mut back_button = parent.spawn(ButtonBundle {
+                style: Style {
+                    size: Size::new(Val::Px(50.0), Val::Px(50.0)),
+                    margin: UiRect::all(Val::Px(5.0)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
                     ..Default::default()
-                })
+                },
+                background_color: button_color,
+                ..Default::default()
+            });
+            back_button
                 .insert(menu_type)
                 .insert(back_marker)
-                .insert(DisabledButton)
                 .insert(BasicButton)
                 .with_children(|parent| {
                     parent.spawn(TextBundle::from_section(
@@ -925,6 +996,10 @@ where
                         },
                     ));
                 });
+
+            if !back_button_enabled {
+                back_button.insert(DisabledButton);
+            }
 
             parent
                 .spawn(NodeBundle {
@@ -961,18 +1036,24 @@ where
                         })),
                     );
                 });
-            parent
-                .spawn(ButtonBundle {
-                    style: Style {
-                        size: Size::new(Val::Px(50.0), Val::Px(50.0)),
-                        margin: UiRect::all(Val::Px(5.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..Default::default()
-                    },
-                    background_color: BackgroundColor::from(Color::GRAY),
+
+            let button_color = if forward_button_enabled {
+                BackgroundColor::from(Color::GRAY)
+            } else {
+                BackgroundColor::from(Color::DARK_GRAY)
+            };
+            let mut forward_button = parent.spawn(ButtonBundle {
+                style: Style {
+                    size: Size::new(Val::Px(50.0), Val::Px(50.0)),
+                    margin: UiRect::all(Val::Px(5.0)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
                     ..Default::default()
-                })
+                },
+                background_color: button_color,
+                ..Default::default()
+            });
+            forward_button
                 .insert(forward_marker)
                 .insert(BasicButton)
                 .with_children(|parent| {
@@ -985,6 +1066,10 @@ where
                         },
                     ));
                 });
+
+            if !forward_button_enabled {
+                forward_button.insert(DisabledButton);
+            }
         })
         .id()
 }

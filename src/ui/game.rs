@@ -5,7 +5,7 @@ use crate::color_system::TileColor;
 use crate::game::{start_game, GameData};
 use crate::loading::{FontAssets, TextureAssets};
 use crate::player::PlayerPoints;
-use crate::GameState;
+use crate::{GamePausedState, GameState};
 use bevy::prelude::CoreSet::Update;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -36,27 +36,24 @@ impl Plugin for GameUiPlugin {
         .add_system(
             button_interaction
                 .in_base_set(Update)
-                .run_if(in_state(GameState::Playing).or_else(in_state(GameState::Paused))),
+                .run_if(in_state(GameState::Playing)),
         )
         .add_system(cleanup_menu.in_schedule(OnExit(GameState::Playing)));
-
-        app.add_system(setup_menu.in_schedule(OnEnter(GameState::Paused)))
-            .add_system(cleanup_menu.in_schedule(OnExit(GameState::Paused)));
 
         app.add_system(
             handle_button_visuals
                 .in_base_set(Update)
-                .run_if(in_state(GameState::Playing).or_else(in_state(GameState::Paused))),
+                .run_if(in_state(GameState::Playing)),
         );
         app.add_system(
             handle_selected_button
                 .in_base_set(Update)
-                .run_if(in_state(GameState::Playing).or_else(in_state(GameState::Paused))),
+                .run_if(in_state(GameState::Playing)),
         );
         app.add_system(
             handle_player_cubes_and_stats
                 .in_base_set(Update)
-                .run_if(in_state(GameState::Playing).or_else(in_state(GameState::Paused))),
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -522,7 +519,7 @@ fn setup_menu(
 }
 
 fn button_interaction(
-    mut state: ResMut<NextState<GameState>>,
+    mut state: ResMut<NextState<GamePausedState>>,
     mut interaction_query: Query<
         (
             Entity,
@@ -593,7 +590,7 @@ fn button_interaction(
             }
 
             if let Some(_) = option_pb {
-                state.set(GameState::Paused);
+                state.set(GamePausedState::Paused);
             }
         }
     }
@@ -697,7 +694,9 @@ fn handle_player_cubes_and_stats(
     font_assets: Res<FontAssets>,
     game: Res<GameData>,
 ) {
-    let (entity, player_cubes_parent) = player_cubes_parent.single();
+    let Ok((entity, player_cubes_parent)) = player_cubes_parent.get_single() else {
+        return;
+    };
     commands.entity(entity).despawn_descendants();
 
     commands.entity(entity).with_children(|mut parent| {

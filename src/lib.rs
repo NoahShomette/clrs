@@ -48,12 +48,19 @@ pub enum GameState {
     Splash,
     // During this State the actual game logic is executed
     Playing,
-    /// Game is paused and will return to playing, quit, or menu
-    Paused,
     /// Game has ended and will show a game over screen and then go to main menu
     Ended,
     // Here the menu is drawn and waiting for player interaction
     Menu,
+}
+
+#[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash)]
+pub enum GamePausedState {
+    // The game is not paused
+    #[default]
+    NotPaused,
+    /// Game is paused and will return to playing, quit, or menu
+    Paused,
 }
 
 /// testing
@@ -77,6 +84,7 @@ impl Plugin for GamePlugin {
         app.add_plugin(RonAssetPlugin::<PalettesAssets>::new(&["palettes.ron"]));
 
         app.add_state::<GameState>()
+            .add_state::<GamePausedState>()
             .add_plugin(ColorSystemPlugin)
             .add_plugin(LoadingPlugin)
             .add_plugin(UiPlugin)
