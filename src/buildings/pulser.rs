@@ -3,14 +3,15 @@ use std::hash::Hash;
 
 use crate::buildings::{Activate, Building};
 use crate::color_system::{convert_tile, ColorConflictCallback, ColorConflictEvent, TileColor, TileColorStrength};
-use crate::pathfinding::{check_if_tile_is_colorable, IsColorableNodeCheck, NodeIsPlayersCheck};
+use crate::objects::{ObjectCachedMap, TileToObjectIndex};
+use crate::pathfinding::{AddObjectToTileToObjectIndex, IsColorableNodeCheck, RemoveObjectFromTileToObjectIndex};
 use bevy::ecs::event::EventWriter;
 use bevy::ecs::system::{Commands, SystemState};
 use bevy::log::info_span;
 use bevy::prelude::{Component, Entity, FromReflect, Mut, Query, Reflect, Resource, With, Without, World};
 use bevy::utils::hashbrown::HashMap;
 use bevy_ecs_tilemap::tiles::TileStorage;
-use bevy_ggf::game_core::saving::{BinaryComponentId, SaveId};
+use bevy_ggf::game_core::change_detection::DespawnObject;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::{Tile, TilePosition};
 use serde::{Deserialize, Serialize};
@@ -21,10 +22,10 @@ use bevy_ggf::mapping::MapId;
 use bevy_ggf::movement::{TileMoveCheckMeta, TileMoveChecks};
 use bevy_ggf::object::{ObjectGridPosition, ObjectId};
 use bevy_ggf::pathfinding::dijkstra::Node;
-use bevy_ggf::pathfinding::{PathfindAlgorithm, PathfindCallback, PathfindMap};
+use bevy_ggf::pathfinding::{MapNode, PathfindAlgorithm, PathfindCallback, PathfindMap};
 use bevy_ggf::player::PlayerMarker;
 
-use super::{check_is_colorable, get_neighbors_tilepos, tile_cost_check, TileNode};
+use super::Simulate;
 
 #[derive(Resource)]
 pub struct PulserQueryState {
@@ -38,66 +39,117 @@ pub struct Pulser {
     pub max_pulse_tiles: u32,
 }
 
-#[derive(Default, Clone, Eq, Debug, PartialEq, Component, Reflect, FromReflect, Serialize, Deserialize)]
-pub struct PulserCachedMap{
-    pub cache: Vec<TilePosition>,
-}
+// two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
+// are not the same player then we damage their color by one. Otherwise at that point we stop.
+pub fn simulate_pulser_cache(world: &mut World) {
+    world.resource_scope(|mut world: &mut World, mut tile_to_object_index: Mut<TileToObjectIndex>|{
+        let mut system_state: SystemState<
+            Query<(Entity,  &ObjectId), (Without<MapId>, Without<ObjectCachedMap>, With<Building<Pulser>>)>,
+        > = SystemState::new(&mut world);
+        let pulsers = system_state.get_mut(&mut world);
 
-impl SaveId for PulserCachedMap{
-    fn save_id(&self) -> BinaryComponentId {
-        15
-    }
+        let mut pathfind = PulserPathfind { diagonals: false };
 
-    fn save_id_const() -> BinaryComponentId where Self:Sized {
-        15
-    }
 
-    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
-fn to_binary(&self) -> Option<Vec<u8> >  {
-    bincode::serialize(self).ok()
-}
+        let mut tile_move_checks = TileMoveChecks {
+            tile_move_checks: vec![TileMoveCheckMeta{ check: Box::new(IsColorableNodeCheck) }
+            ],
+        };
+
+        let pulsers: Vec<(Entity, ObjectId)> = pulsers.into_iter().map(|(entity, object_id)|{(entity, object_id.clone())}).collect();
+
+        for (entity, object_id) in pulsers {
+            let mut pathfind_map = PulserPathfindMap {
+                map: Default::default(),
+                diagonals: false,
+            };
+
+            pathfind.pathfind(
+                MapId { id: 1 },
+                entity,
+                &mut world,
+                &mut tile_move_checks,
+                &mut None::<ColorConflictCallback>,
+                &mut pathfind_map,
+            );
+
+            let mut cache_component = ObjectCachedMap{
+                cache: vec![]
+            };
+
+            let mut btree_cache = BTreeMap::new();
+
+            for (tile_pos, tile_node) in pathfind_map.map.iter(){
+            if tile_node.valid_move{
+
+                let entry = btree_cache.entry(tile_node.cost() as u8).or_insert(vec![]);
+                let index_entry = tile_to_object_index.map.entry(tile_pos.clone()).or_default();
+                index_entry.push(object_id);
+                entry.push(tile_pos.clone());
+            }
+            }
+
+            for vec in btree_cache.iter_mut(){
+                let mut converted = vec.1.iter().map(|x|{Into::<TilePosition>::into(*x)}).collect();
+                cache_component.cache.append(&mut converted);
+            }
+
+            world.entity_mut(entity).insert(cache_component);
+        }
+
+        system_state.apply(&mut world);
+    });
 }
 
 // two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
 // are not the same player then we damage their color by one. Otherwise at that point we stop.
-pub fn simulate_pulsers(mut world: &mut World) {
-    let mut system_state: SystemState<
-        Query<Entity, (Without<MapId>, Without<PulserCachedMap>, With<Building<Pulser>>)>,
-    > = SystemState::new(&mut world);
-    let pulsers = system_state.get_mut(&mut world);
+pub fn delete_pulser_from_tile_index_cache(world: &mut World) {
+    world.resource_scope(|mut world: &mut World, mut tile_to_object_index: Mut<TileToObjectIndex>|{
+        let mut system_state: SystemState<
+            Query<(Entity,  &ObjectId), (Without<MapId>, With<Building<Pulser>>, With<DespawnObject>)>,
+        > = SystemState::new(&mut world);
+        let pulsers = system_state.get_mut(&mut world);
 
-    let mut pathfind = PulserPathfind { diagonals: false };
+        let mut pathfind = PulserPathfind { diagonals: false };
 
-    let mut pathfind_map = PulserPathfindMap {
-        map: Default::default(),
-        diagonals: false,
-    };
 
-    let mut tile_move_checks = TileMoveChecks {
-        tile_move_checks: vec![
-        ],
-    };
+        let mut tile_move_checks = TileMoveChecks {
+            tile_move_checks: vec![TileMoveCheckMeta{ check: Box::new(IsColorableNodeCheck) }
+            ],
+        };
 
-    let pulsers: Vec<Entity> = pulsers.into_iter().collect();
+        let pulsers: Vec<(Entity, ObjectId)> = pulsers.into_iter().map(|(entity, object_id)|{(entity, object_id.clone())}).collect();
 
-    for entity in pulsers.iter() {
-        world.entity_mut(*entity).insert(PulserCachedMap{
-            cache: vec![]
-        });
+        for (entity, object_id) in pulsers {
+            let mut pathfind_map = PulserPathfindMap {
+                map: Default::default(),
+                diagonals: false,
+            };
 
-        pathfind.pathfind(
-            MapId { id: 1 },
-            *entity,
-            &mut world,
-            &mut tile_move_checks,
-            &mut Some(ColorConflictCallback),
-            &mut pathfind_map,
-        );
-    }
+            pathfind.pathfind(
+                MapId { id: 1 },
+                entity,
+                &mut world,
+                &mut tile_move_checks,
+                &mut None::<ColorConflictCallback>,
+                &mut pathfind_map,
+            );
 
-    system_state.apply(&mut world);
+            for (tile_pos, tile_node) in pathfind_map.map.iter(){
+            if tile_node.valid_move{
+
+                let index_entry = tile_to_object_index.map.entry(tile_pos.clone()).or_default();
+                index_entry.retain(|element|{element != &object_id});
+            }
+            }
+
+        }
+
+        system_state.apply(&mut world);
+    });
 }
 
+#[derive(Default)]
 pub struct PulserPathfind {
     pub diagonals: bool,
 }
@@ -128,13 +180,11 @@ impl PathfindAlgorithm<TilePos, Node, Building<Pulser>> for PulserPathfind {
             };
             let object_query = pulser_query_state.query.get_mut(world);
 
-            let Ok((object_grid_position, player_marker, pulser)) = object_query.get(pathfind_entity) else{
+            let Ok((object_grid_position, _, _)) = object_query.get(pathfind_entity) else{
                 world.insert_resource(pulser_query_state);
                 return ();
             };
             let object_grid_position = object_grid_position.clone();
-            let player_pathing_id = player_marker.id();
-            let max_tiles = pulser.building_type.max_pulse_tiles;
 
             pathfind_map.new_pathfind_map(object_grid_position.tile_position.into());
 
@@ -147,12 +197,12 @@ impl PathfindAlgorithm<TilePos, Node, Building<Pulser>> for PulserPathfind {
                     pathfind_entity,
                     tile_entity,
                     object_grid_position.tile_position.into(),
+                    pathfind_map.get_node(object_grid_position.tile_position.into()).unwrap().cost(),
                     &mut world,
                 );
             }
 
             let mut available_moves: Vec<TilePos> = vec![];
-            let mut tiles_changed: u32 = 0;
 
             // unvisited nodes
             let mut unvisited_nodes: Vec<Node> = vec![Node {
@@ -167,7 +217,7 @@ impl PathfindAlgorithm<TilePos, Node, Building<Pulser>> for PulserPathfind {
 
             // TODO: Create a resource or something that we can use to store all the game stats so that the
             // strength isnt hardcoded anymore
-            while !unvisited_nodes.is_empty() && tiles_changed < max_tiles{
+            while !unvisited_nodes.is_empty(){
                 unvisited_nodes.sort_by(|x, y| x.move_cost.partial_cmp(&y.move_cost).unwrap());
 
                 let Some(current_node) = unvisited_nodes.get(0) else {
@@ -226,14 +276,10 @@ impl PathfindAlgorithm<TilePos, Node, Building<Pulser>> for PulserPathfind {
                         ).clone()); //
                         available_moves.push(neighbor.0);
                     }
-                    let pp_check_tile_move_checks = info_span!("Pulser Pathfinding", name = "pp_check_if_tile_is_colorable").entered();
-                    if check_if_tile_is_colorable(&mut world, neighbor.1, player_pathing_id) {
-                        tiles_changed += 1;
-                    }
-                    pp_check_tile_move_checks.exit();
+
                     let pp_callback = info_span!("Pulser Pathfinding", name = "pp_callback").entered();
                     if let Some(callback) = pathfind_callback {
-                        callback.foreach_tile(pathfind_entity, neighbor.1, neighbor.0, &mut world);
+                        callback.foreach_tile(pathfind_entity, neighbor.1,  neighbor.0,pathfind_map.get_node(neighbor.0).unwrap().cost(), &mut world);
                     }
                     pp_callback.exit();
                 }
@@ -249,10 +295,42 @@ impl PathfindAlgorithm<TilePos, Node, Building<Pulser>> for PulserPathfind {
     }
 }
 
+#[derive(Default)]
 pub struct PulserPathfindMap {
     pub map: HashMap<TilePos, Node>,
     pub diagonals: bool,
 }
+
+impl RemoveObjectFromTileToObjectIndex for PulserPathfindMap{
+    fn remove_from_index(&mut self, object_id: ObjectId, tile_to_object_index: &mut TileToObjectIndex) {
+        for (tile_pos, tile_node) in self.map.iter() {
+            if tile_node.valid_move {
+                let index_entry = tile_to_object_index
+                    .map
+                    .entry(tile_pos.clone())
+                    .or_default();
+                index_entry.retain(|element| element != &object_id);
+            }
+        }
+    }
+}
+
+impl AddObjectToTileToObjectIndex for PulserPathfindMap{
+    fn add_to_index(&mut self, object_id: ObjectId, tile_to_object_index: &mut TileToObjectIndex, mut btree_cache: &mut BTreeMap<u8, Vec<TilePos>>) {
+        for (tile_pos, tile_node) in self.map.iter() {
+            if tile_node.valid_move {
+                let entry = btree_cache.entry(tile_node.cost() as u8).or_insert(vec![]);
+                let index_entry = tile_to_object_index
+                    .map
+                    .entry(tile_pos.clone())
+                    .or_default();
+                index_entry.push(object_id);
+                entry.push(tile_pos.clone());
+            }
+        }
+    }
+}
+
 
 impl PathfindMap<TilePos, Node, (), Building<Pulser>> for PulserPathfindMap {
     fn new_pathfind_map(&mut self, starting_pos: TilePos) {
@@ -275,7 +353,7 @@ impl PathfindMap<TilePos, Node, (), Building<Pulser>> for PulserPathfindMap {
     fn node_cost_calculation(
         &mut self,
         entity_moving: Entity,
-        tile_entity: Entity,
+        _: Entity,
         tile_pos: TilePos,
         move_from_tile_pos: TilePos,
         world: &World,
@@ -402,143 +480,11 @@ impl PathfindMap<TilePos, Node, (), Building<Pulser>> for PulserPathfindMap {
     }
 
     fn get_output(&mut self) -> () {}
-}
-
-
-// two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
-// are not the same player then we damage their color by one. Otherwise at that point we stop.
-pub fn create_pulser_cache(
-    mut tile_storage_query: Query<(Entity, &MapId, &TileStorage, &TilemapSize)>,
-    pulsers: Query<
-        (
-            Entity,
-            &ObjectId,
-            &PlayerMarker,
-            &Building<Pulser>,
-            &ObjectGridPosition,
-        ),
-        (Without<MapId>, Without<PulserCachedMap>),
-    >,
-    mut tiles: Query<
-        (
-            Entity,
-            &TileTerrainInfo,
-            Option<(&mut PlayerMarker, &mut TileColor)>,
-        ),
-        (With<Tile>, Without<Building<Pulser>>, Without<MapId>),
-    >,
-    mut commands: Commands,
-) {
-    let Some((_, _, tile_storage, tilemap_size)) = tile_storage_query
-        .iter_mut()
-        .find(|(_, id, _, _)| id == &&MapId{ id: 1 })else{
-        return;
-        };
-
-    for (entity, _, _, pulser, object_grid_position) in pulsers.iter() {
-        let mut tiles_info: HashMap<TilePos, TileNode> = HashMap::new();
-        // insert the starting node at the moving objects grid position
-        tiles_info.insert(
-            object_grid_position.tile_position.into(),
-            TileNode {
-                tile_pos: object_grid_position.tile_position.into(),
-                prior_node: object_grid_position.tile_position.into(),
-                cost: Some(0),
-            },
-        );
-        // unvisited nodes
-        let mut unvisited_tiles: Vec<TileNode> = vec![TileNode {
-            tile_pos: object_grid_position.tile_position.into(),
-            prior_node: object_grid_position.tile_position.into(),
-            cost: Some(0),
-        }];
-        let mut visited_nodes: Vec<TilePos> = vec![];
-
-        while !unvisited_tiles.is_empty() {
-            unvisited_tiles.sort_by(|x, y| x.cost.unwrap().partial_cmp(&y.cost.unwrap()).unwrap());
-
-            let Some(current_node) = unvisited_tiles.get(0) else {
-                continue;
-            };
-
-            let neighbor_pos = get_neighbors_tilepos(current_node.tile_pos, &tilemap_size);
-
-            let current_node = *current_node;
-            let mut neighbors: Vec<(TilePos, Entity)> = vec![];
-            for neighbor in neighbor_pos.iter() {
-                let Some(tile_entity) = tile_storage.get(neighbor) else {
-                    continue;
-                };
-                neighbors.push((*neighbor, tile_entity));
-            }
-
-            'neighbors: for neighbor in neighbors.iter() {
-                if visited_nodes.contains(&neighbor.0) {
-                    continue;
-                }
-
-                if tiles_info.contains_key(&neighbor.0) {
-                } else {
-                    let node = TileNode {
-                        tile_pos: neighbor.0,
-                        prior_node: current_node.tile_pos,
-                        cost: None,
-                    };
-                    tiles_info.insert(neighbor.0, node);
-                }
-
-                if !tile_cost_check(
-                    pulser.building_type.strength,
-                    &neighbor.0,
-                    &current_node.tile_pos,
-                    &mut tiles_info,
-                ) {
-                    continue 'neighbors;
-                }
-
-                let Some(tile_entity) = tile_storage.get(&neighbor.0) else {
-                    continue;
-                };
-
-
-                if let Ok((_, tile_terrain_info, _)) = tiles.get_mut(tile_entity) {
-                    if !check_is_colorable(tile_terrain_info) {
-                        continue;
-                    }
-                }
-
-                unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
-                    "Is safe because we know we add the node in at the beginning of this loop",
-                ));
-            }
-
-            unvisited_tiles.remove(0);
-            visited_nodes.push(current_node.tile_pos);
-        }
-
-        let mut cache_component = PulserCachedMap{
-            cache: vec![]
-        };
-
-        let mut btree_cache = BTreeMap::new();
-
-        for (tile_pos, tile_node) in tiles_info.iter(){
-if let Some(cost) = tile_node.cost{
-
-    let entry = btree_cache.entry(cost as u8).or_insert(vec![]);
-    entry.push(tile_pos.clone());
-}
-        }
-
-        for vec in btree_cache.iter_mut(){
-            let mut converted = vec.1.iter().map(|x|{Into::<TilePosition>::into(*x)}).collect();
-            cache_component.cache.append(&mut converted);
-        }
-
-        commands.entity(entity).insert(cache_component);
+    
+    fn get_node(&self, node_pos: TilePos) -> Option<&Node> {
+        self.map.get(&node_pos)
     }
 }
-
 
 // two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
 // are not the same player then we damage their color by one. Otherwise at that point we stop.
@@ -550,9 +496,9 @@ pub fn simulate_pulsers_from_cache(
             &ObjectId,
             &PlayerMarker,
             &Building<Pulser>,
-            &PulserCachedMap
+            &ObjectCachedMap
         ),
-        (Without<MapId>, With<Activate>),
+        (Without<MapId>, With<Activate>, With<Simulate>),
     >,
     mut tiles: Query<
         (
@@ -607,5 +553,10 @@ pub fn simulate_pulsers_from_cache(
         }
 
         }
+
+        if tiles_changed == 0 {
+            commands.entity(entity).remove::<Simulate>();
+        }
+
     }
 }

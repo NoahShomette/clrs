@@ -9,7 +9,8 @@ use crate::actions::Actions;
 use crate::ai::{run_ai_ability, run_ai_building};
 use crate::buildings::line::{simulate_lines, Line};
 use crate::buildings::pulser::{
-    create_pulser_cache, simulate_pulsers, simulate_pulsers_from_cache, Pulser, PulserCachedMap,
+    delete_pulser_from_tile_index_cache, simulate_pulser_cache, simulate_pulsers_from_cache,
+    Pulser, PulserPathfind, PulserPathfindMap,
 };
 use crate::buildings::scatter::{simulate_scatterers, Scatters};
 use crate::buildings::{
@@ -20,11 +21,11 @@ use crate::color_system::{
     handle_color_conflict_guarantees, handle_color_conflicts, update_color_conflicts,
     ColorConflictEvent, ColorConflictGuarantees, ColorConflicts, PlayerTileChangedCount, TileColor,
 };
-use crate::draw::draw::draw_objects;
 use crate::game::end_game::{check_game_ended, cleanup_game, update_game_end_state};
 use crate::game::state::update_main_world_game_state;
 use crate::level_loader::{LevelHandle, Levels};
 use crate::mapping::map::MapCommandsExt;
+use crate::objects::{simulate_simple_building_cache, update_objects_index, ObjectIndex, TileToObjectIndex};
 use crate::player::{update_player_points, PlayerPoints};
 use crate::{GamePausedState, GameState};
 
@@ -544,11 +545,12 @@ pub fn setup_game(
     schedule.configure_sets((GameSets::Pre, GameSets::Core, GameSets::Post).chain());
     schedule.add_systems(
         (
+            update_objects_index,
             apply_system_buffers,
             update_building_timers,
             update_ability_timers,
             apply_system_buffers,
-            create_pulser_cache,
+            simulate_simple_building_cache::<Pulser, PulserPathfind, PulserPathfindMap>,
             apply_system_buffers,
             //simulate_pulsers,
             simulate_pulsers_from_cache,
@@ -578,6 +580,7 @@ pub fn setup_game(
     );
     schedule.add_systems(
         (
+            delete_pulser_from_tile_index_cache,
             apply_system_buffers,
             update_player_points,
             apply_system_buffers,
@@ -628,6 +631,8 @@ pub fn setup_game(
     game.game_world
         .init_resource::<Events<ColorConflictGuarantees>>();
     game.game_world.init_resource::<Time>();
+    game.game_world.init_resource::<TileToObjectIndex>();
+    game.game_world.init_resource::<ObjectIndex>();
 
     game.register_component::<Player>();
     game.register_component::<ObjectInfo>();
@@ -636,7 +641,6 @@ pub fn setup_game(
     game.register_component::<Building<Line>>();
     game.register_component::<Building<Scatters>>();
 
-    game.register_component::<PulserCachedMap>();
     game.register_component::<Activate>();
     game.register_component::<BuildingCooldown>();
 

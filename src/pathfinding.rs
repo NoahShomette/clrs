@@ -1,4 +1,7 @@
-﻿use crate::color_system::{TileColor, TileColorStrength};
+﻿use std::collections::BTreeMap;
+
+use crate::color_system::{TileColor, TileColorStrength};
+use crate::objects::{ObjectCachedMap, TileToObjectIndex};
 use bevy::ecs::system::SystemState;
 use bevy::prelude::{Entity, Query, Resource, With, World};
 use bevy_ecs_tilemap::prelude::TilePos;
@@ -7,6 +10,25 @@ use bevy_ggf::mapping::tiles::Tile;
 use bevy_ggf::movement::TileMoveCheck;
 use bevy_ggf::object::ObjectId;
 use bevy_ggf::player::PlayerMarker;
+
+pub trait RemoveObjectFromTileToObjectIndex {
+    fn remove_from_index(
+        &mut self,
+        object_id: ObjectId,
+        tile_to_object_index: &mut TileToObjectIndex,
+    );
+}
+
+/// A function that needs to add the object to the index and sort the map in the pathfind_map into the btree_cache using the costs.
+/// The results will be used to create the objects tile cache
+pub trait AddObjectToTileToObjectIndex {
+    fn add_to_index(
+        &mut self,
+        object_id: ObjectId,
+        tile_to_object_index: &mut TileToObjectIndex,
+        btree_cache: &mut BTreeMap<u8, Vec<TilePos>>,
+    );
+}
 
 #[derive(Resource)]
 pub struct TileColorableCheckQueryState {

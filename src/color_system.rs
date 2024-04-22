@@ -1,3 +1,5 @@
+use crate::buildings::Simulate;
+use crate::objects::{ObjectIndex, TileToObjectIndex};
 use crate::player::PlayerPoints;
 use bevy::app::{App, Plugin};
 use bevy::ecs::system::SystemState;
@@ -110,6 +112,7 @@ impl PathfindCallback<TilePos> for ColorConflictCallback {
         pathfinding_entity: Entity,
         node_entity: Entity,
         node_pos: TilePos,
+        node_cost: u32,
         world: &mut World,
     ) {
         let mut system_state = match world.remove_resource::<ColorConflictCallbackQueryState>() {
@@ -254,6 +257,9 @@ pub fn handle_color_conflicts(
     >,
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut player_query: Query<(Entity, &mut PlayerPoints, &Player)>,
+    tile_to_object_index: ResMut<TileToObjectIndex>,
+    object_index: ResMut<ObjectIndex>,
+    object_query: Query<(Entity, Option<&Simulate>), With<ObjectId>>,
 ) {
     player_tiles_changed_count.player_lost_tiles = 0;
     player_tiles_changed_count.player_gained_tiles = 0;
@@ -271,78 +277,80 @@ pub fn handle_color_conflicts(
             id_hashmap.insert(id.0, count.saturating_add(1));
         }
 
-        let mut handle_conflicts = true;
+        if id_hashmap.is_empty() {
+            continue;
+        }
 
-        while handle_conflicts {
-            if id_hashmap.is_empty() {
-                handle_conflicts = false;
+        let mut highest: (usize, u32) = (0, 0);
+        for (id, count) in id_hashmap.iter() {
+            if count > &highest.1 {
+                highest.0 = *id;
+                highest.1 = *count;
             }
+        }
 
-            let mut highest: (usize, u32) = (0, 0);
-            for (id, count) in id_hashmap.iter() {
-                if count > &highest.1 {
-                    highest.0 = *id;
-                    highest.1 = *count;
+        let Some((_, tile_storage)) = tile_storage_query
+            .iter_mut()
+            .find(|(id, _)| id == &&MapId { id: 1 })
+        else {
+            continue;
+        };
+
+        let tile_entity = tile_storage.get(&tile_pos).unwrap();
+
+        let Ok((entity, _, options)) = tiles.get_mut(tile_entity) else {
+            continue;
+        };
+
+        match options {
+            None => {
+                commands.entity(entity).insert((
+                    TileColor {
+                        tile_color_strength: TileColorStrength::One,
+                    },
+                    PlayerMarker::new(highest.0),
+                ));
+                for (entity, mut player_points, player_id) in player_query.iter_mut() {
+                    if player_id.id() == 0 {
+                        player_tiles_changed_count.player_gained_tiles = player_tiles_changed_count
+                            .player_gained_tiles
+                            .saturating_add(1);
+                    }
+                    if player_id.id() == highest.0 {
+                        increase_ability_points(&mut player_points);
+                    }
                 }
             }
-
-            let Some((_, tile_storage)) = tile_storage_query
-                .iter_mut()
-                .find(|(id, _)| id == &&MapId { id: 1 })
-            else {
-                handle_conflicts = false;
-                continue;
-            };
-
-            let tile_entity = tile_storage.get(&tile_pos).unwrap();
-
-            let Ok((entity, _, options)) = tiles.get_mut(tile_entity) else {
-                handle_conflicts = false;
-                continue;
-            };
-
-            match options {
-                None => {
-                    commands.entity(entity).insert((
-                        TileColor {
-                            tile_color_strength: TileColorStrength::One,
-                        },
-                        PlayerMarker::new(highest.0),
-                    ));
-                    for (entity, mut player_points, player_id) in player_query.iter_mut() {
-                        if player_id.id() == 0 {
-                            player_tiles_changed_count.player_gained_tiles =
+            Some((tile_player_marker, mut tile_color)) => {
+                if highest.0 == tile_player_marker.id() {
+                    if let TileColorStrength::Five = tile_color.tile_color_strength {
+                        continue;
+                    } else {
+                        tile_color.strengthen();
+                    }
+                } else {
+                    tile_color.damage();
+                    if let TileColorStrength::Neutral = tile_color.tile_color_strength {
+                        if tile_player_marker.id() == 0 {
+                            player_tiles_changed_count.player_lost_tiles =
                                 player_tiles_changed_count
-                                    .player_gained_tiles
+                                    .player_lost_tiles
                                     .saturating_add(1);
                         }
-                        if player_id.id() == highest.0 {
-                            increase_ability_points(&mut player_points);
-                        }
+                        commands.entity(entity).remove::<PlayerMarker>();
+                        commands.entity(entity).remove::<TileColor>();
                     }
-                    handle_conflicts = false;
                 }
-                Some((tile_player_marker, mut tile_color)) => {
-                    if highest.0 == tile_player_marker.id() {
-                        if let TileColorStrength::Five = tile_color.tile_color_strength {
-                            handle_conflicts = false;
-                        } else {
-                            tile_color.strengthen();
-                            handle_conflicts = false;
+            }
+        }
+
+        if let Some(object_vec) = tile_to_object_index.map.get(&tile_pos) {
+            for object_id in object_vec.iter() {
+                if let Some(entity) = object_index.hashmap.get(&object_id) {
+                    if let Ok((entity, opt_simulate)) = object_query.get(*entity) {
+                        if opt_simulate.is_none() {
+                            commands.entity(entity).insert(Simulate);
                         }
-                    } else {
-                        tile_color.damage();
-                        if let TileColorStrength::Neutral = tile_color.tile_color_strength {
-                            if tile_player_marker.id() == 0 {
-                                player_tiles_changed_count.player_lost_tiles =
-                                    player_tiles_changed_count
-                                        .player_lost_tiles
-                                        .saturating_add(1);
-                            }
-                            commands.entity(entity).remove::<PlayerMarker>();
-                            commands.entity(entity).remove::<TileColor>();
-                        }
-                        handle_conflicts = false;
                     }
                 }
             }
@@ -390,6 +398,9 @@ pub fn handle_color_conflict_guarantees(
         With<Tile>,
     >,
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
+    tile_to_object_index: ResMut<TileToObjectIndex>,
+    object_index: ResMut<ObjectIndex>,
+    object_query: Query<(Entity, Option<&Simulate>), With<ObjectId>>,
 ) {
     player_tiles_changed_count.player_lost_tiles = 0;
     player_tiles_changed_count.player_gained_tiles = 0;
@@ -481,6 +492,17 @@ pub fn handle_color_conflict_guarantees(
                     }
                 }
             }
+            if let Some(object_vec) = tile_to_object_index.map.get(&tile_pos) {
+                for object_id in object_vec.iter() {
+                    if let Some(entity) = object_index.hashmap.get(&object_id) {
+                        if let Ok((entity, opt_simulate)) = object_query.get(*entity) {
+                            if opt_simulate.is_none() {
+                                commands.entity(entity).insert(Simulate);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     color_conflicts.guaranteed_conflicts.clear();
@@ -558,7 +580,9 @@ impl ColorConflicts {
     }
 }
 
-#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Reflect, FromReflect, Serialize, Deserialize)]
+#[derive(
+    Default, Clone, Eq, Hash, Debug, PartialEq, Reflect, FromReflect, Serialize, Deserialize,
+)]
 pub enum TileColorStrength {
     #[default]
     Neutral,
@@ -569,7 +593,19 @@ pub enum TileColorStrength {
     Five,
 }
 
-#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect, Serialize, Deserialize)]
+#[derive(
+    Default,
+    Clone,
+    Eq,
+    Hash,
+    Debug,
+    PartialEq,
+    Component,
+    Reflect,
+    FromReflect,
+    Serialize,
+    Deserialize,
+)]
 pub struct TileColor {
     pub tile_color_strength: TileColorStrength,
 }
@@ -591,7 +627,6 @@ impl SaveId for TileColor {
         bincode::serialize(self).ok()
     }
 }
-
 
 impl TileColor {
     pub fn get_scale(&self) -> Vec3 {
