@@ -1,3 +1,4 @@
+pub mod building_pathfinding;
 pub mod line;
 pub mod pulser;
 pub mod scatter;
@@ -6,7 +7,7 @@ use std::time::{Duration, SystemTime};
 
 use crate::buildings::line::Line;
 use crate::buildings::pulser::Pulser;
-use crate::buildings::scatter::Scatters;
+use crate::buildings::scatter::Scatter;
 use crate::game::GameData;
 use crate::player::PlayerPoints;
 use bevy::ecs::system::SystemState;
@@ -193,14 +194,14 @@ impl GameCommand for SpawnBuilding {
                                 object_type: game_data.object_types.get("Scatter").unwrap().clone(),
                             },
                             Building {
-                                building_type: Scatters {
+                                building_type: Scatter {
                                     scatter_range: 3,
-                                    scatter_amount: 20,
+                                    scatter_amount: 24,
                                 },
                             },
                             BuildingCooldown {
-                                timer: Timer::from_seconds(0.13, TimerMode::Once),
-                                timer_reset: 0.13,
+                                timer: Timer::from_seconds(0.15, TimerMode::Once),
+                                timer_reset: 0.15,
                             },
                             BuildingMarker::default(),
                             Simulate,
@@ -239,11 +240,15 @@ impl GameCommand for SpawnBuilding {
                                 object_type: game_data.object_types.get("Line").unwrap().clone(),
                             },
                             Building {
-                                building_type: Line { strength: 12 },
+                                building_type: Line {
+                                    strength: 10,
+                                    hits_per_tile: 2,
+                                    max_changed_per_side: 3,
+                                },
                             },
                             BuildingCooldown {
-                                timer: Timer::from_seconds(0.35, TimerMode::Once),
-                                timer_reset: 0.35,
+                                timer: Timer::from_seconds(0.15, TimerMode::Once),
+                                timer_reset: 0.15,
                             },
                             BuildingMarker::default(),
                             Simulate,
@@ -413,7 +418,7 @@ impl SaveId for Building<Pulser> {
     }
 }
 
-impl SaveId for Building<Scatters> {
+impl SaveId for Building<Scatter> {
     fn save_id(&self) -> BinaryComponentId {
         13
     }

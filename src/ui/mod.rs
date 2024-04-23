@@ -1,4 +1,5 @@
 mod components;
+mod dev;
 mod end_game;
 mod game;
 mod menu;
@@ -18,6 +19,8 @@ use bevy_tweening::lens::TransformScaleLens;
 use bevy_tweening::{Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween};
 use std::time::Duration;
 
+use self::dev::DevPlugin;
+
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
@@ -25,7 +28,8 @@ impl Plugin for UiPlugin {
         app.add_plugin(MenuPlugin)
             .add_plugin(GameUiPlugin)
             .add_plugin(PauseUiPlugin)
-            .add_plugin(EndGameUiPlugin);
+            .add_plugin(EndGameUiPlugin)
+            .add_plugin(DevPlugin);
 
         app.add_systems((
             handle_button_visuals,
@@ -34,11 +38,6 @@ impl Plugin for UiPlugin {
             handle_background_colors,
             handle_text_colors,
         ));
-
-        /*
-        app.add_plugin(ResourceInspectorPlugin::<GameBuildSettings>::default())
-            .add_plugin(WorldInspectorPlugin::new());
-         */
     }
 }
 

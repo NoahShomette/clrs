@@ -266,15 +266,10 @@ pub fn handle_color_conflicts(
 
     for (tile_pos, player_id_vec) in color_conflicts.conflicts.iter() {
         let mut id_hashmap: HashMap<usize, u32> = HashMap::default();
-        let mut objects: Vec<usize> = vec![];
-        for id in player_id_vec.iter() {
-            if objects.contains(&id.1) {
-                continue;
-            }
-            objects.push(id.1);
-            let count = id_hashmap.entry(id.0).or_insert(0);
+        for (player_id, _object_id) in player_id_vec.iter() {
+            let count = id_hashmap.entry(*player_id).or_insert(0);
             let count = *count;
-            id_hashmap.insert(id.0, count.saturating_add(1));
+            id_hashmap.insert(*player_id, count.saturating_add(1));
         }
 
         if id_hashmap.is_empty() {

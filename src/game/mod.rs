@@ -7,12 +7,10 @@ use crate::abilities::nuke::simulate_nukes;
 use crate::abilities::{destroy_abilities, update_ability_timers};
 use crate::actions::Actions;
 use crate::ai::{run_ai_ability, run_ai_building};
-use crate::buildings::line::{simulate_lines, Line};
-use crate::buildings::pulser::{
-    delete_pulser_from_tile_index_cache, simulate_pulser_cache, simulate_pulsers_from_cache,
-    Pulser, PulserPathfind, PulserPathfindMap,
-};
-use crate::buildings::scatter::{simulate_scatterers, Scatters};
+use crate::buildings::building_pathfinding::{BuildingPathfinder, SimpleBuildingPathfindMap};
+use crate::buildings::line::{simulate_lines_from_cache, Line, LinePathfindMap};
+use crate::buildings::pulser::{simulate_pulsers_from_cache, Pulser};
+use crate::buildings::scatter::{simulate_scatter_from_cache, Scatter};
 use crate::buildings::{
     destroy_buildings, update_building_timers, Activate, Building, BuildingCooldown,
     BuildingMarker, Simulate,
@@ -25,7 +23,10 @@ use crate::game::end_game::{check_game_ended, cleanup_game, update_game_end_stat
 use crate::game::state::update_main_world_game_state;
 use crate::level_loader::{LevelHandle, Levels};
 use crate::mapping::map::MapCommandsExt;
-use crate::objects::{simulate_simple_building_cache, update_objects_index, ObjectIndex, TileToObjectIndex};
+use crate::objects::{
+    delete_building_from_tile_index_cache, simulate_simple_building_cache, update_objects_index,
+    ObjectIndex, TileToObjectIndex,
+};
 use crate::player::{update_player_points, PlayerPoints};
 use crate::{GamePausedState, GameState};
 
@@ -550,12 +551,21 @@ pub fn setup_game(
             update_building_timers,
             update_ability_timers,
             apply_system_buffers,
-            simulate_simple_building_cache::<Pulser, PulserPathfind, PulserPathfindMap>,
+            simulate_simple_building_cache::<
+                Pulser,
+                BuildingPathfinder<Pulser>,
+                SimpleBuildingPathfindMap<Pulser>,
+            >,
+            simulate_simple_building_cache::<Line, BuildingPathfinder<Line>, LinePathfindMap>,
+            simulate_simple_building_cache::<
+                Scatter,
+                BuildingPathfinder<Scatter>,
+                SimpleBuildingPathfindMap<Scatter>,
+            >,
             apply_system_buffers,
-            //simulate_pulsers,
             simulate_pulsers_from_cache,
-            simulate_lines,
-            simulate_scatterers,
+            simulate_lines_from_cache,
+            simulate_scatter_from_cache,
             simulate_nukes,
             simulate_expands,
             simulate_fortifies,
@@ -580,7 +590,21 @@ pub fn setup_game(
     );
     schedule.add_systems(
         (
-            delete_pulser_from_tile_index_cache,
+            delete_building_from_tile_index_cache::<
+                Pulser,
+                BuildingPathfinder<Pulser>,
+                SimpleBuildingPathfindMap<Pulser>,
+            >,
+            delete_building_from_tile_index_cache::<
+                Line,
+                BuildingPathfinder<Line>,
+                LinePathfindMap,
+            >,
+            delete_building_from_tile_index_cache::<
+                Scatter,
+                BuildingPathfinder<Scatter>,
+                SimpleBuildingPathfindMap<Scatter>,
+            >,
             apply_system_buffers,
             update_player_points,
             apply_system_buffers,
@@ -639,7 +663,7 @@ pub fn setup_game(
 
     game.register_component::<Building<Pulser>>();
     game.register_component::<Building<Line>>();
-    game.register_component::<Building<Scatters>>();
+    game.register_component::<Building<Scatter>>();
 
     game.register_component::<Activate>();
     game.register_component::<BuildingCooldown>();

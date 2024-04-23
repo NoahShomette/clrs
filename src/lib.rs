@@ -29,6 +29,10 @@ use crate::loading::colors_loader::PalettesAssets;
 use crate::mapping::MapPlugin;
 use crate::ui::UiPlugin;
 use bevy::app::App;
+
+#[cfg(not(debug_assertions))]
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+
 #[cfg(debug_assertions)]
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
@@ -97,6 +101,10 @@ impl Plugin for GamePlugin {
             .add_plugin(FrameworkPlugin)
             .add_plugin(MapPlugin)
             .add_plugin(ObjectsPlugin);
+        #[cfg(not(debug_assertions))]
+        {
+            app.add_plugin(FrameTimeDiagnosticsPlugin::default());
+        }
 
         #[cfg(debug_assertions)]
         {

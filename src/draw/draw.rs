@@ -2,7 +2,7 @@ use crate::color_system::TileColor;
 use crate::draw::{DrawObject, DrawTile, MyColorLens};
 use crate::game::state::OldTileState;
 use crate::game::GameData;
-use crate::loading::{FontAssets, TextureAssets};
+use crate::loading::TextureAssets;
 use crate::ui::PlayerColors;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::TilePos;
@@ -163,7 +163,7 @@ pub fn draw_tiles(
 
         let transform_tween = Tween::new(
             EaseFunction::QuadraticInOut,
-            Duration::from_millis(200),
+            Duration::from_millis(100),
             TransformScaleLens {
                 start: tile_color_size,
                 end: match options {
