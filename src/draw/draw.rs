@@ -105,7 +105,7 @@ pub fn draw_tiles(
         ),
         Added<UpdateTile>,
     >,
-    children_query: Query<&ChildGraphics>,
+    children_query: Query<(&ChildGraphics, &Transform)>,
     player_colors: Res<PlayerColors>,
     mut commands: Commands,
 ) {
@@ -145,25 +145,40 @@ pub fn draw_tiles(
         )
         .with_repeat_count(RepeatCount::Finite(1));
 
-        let tile_color_size = match old_tile_state.is_some() {
-            true => match &old_tile_state.unwrap().tile_color {
-                Some(tile_color) => tile_color.get_scale(),
-                None => Vec3 {
+        let tile_color_size = match children.is_some() {
+            true => {
+                let mut size = Vec3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 1.0,
+                };
+                for child in children.unwrap().iter() {
+                    if let Ok((_, transform)) = children_query.get(*child) {
+                        size = transform.scale;
+                    }
+                }
+                size
+            }
+            false => match old_tile_state.is_some() {
+                true => match &old_tile_state.unwrap().tile_color {
+                    Some(tile_color) => tile_color.get_scale(),
+                    None => Vec3 {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 1.0,
+                    },
+                },
+                false => Vec3 {
                     x: 0.0,
                     y: 0.0,
                     z: 1.0,
                 },
             },
-            false => Vec3 {
-                x: 0.0,
-                y: 0.0,
-                z: 1.0,
-            },
         };
 
         let transform_tween = Tween::new(
             EaseFunction::QuadraticInOut,
-            Duration::from_millis(100),
+            Duration::from_millis(350),
             TransformScaleLens {
                 start: tile_color_size,
                 end: match options {

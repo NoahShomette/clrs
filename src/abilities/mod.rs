@@ -111,13 +111,13 @@ impl GameCommand for SpawnAbility {
                             Ability {
                                 ability_type: Nuke {
                                     strength: 5,
-                                    min_tile_damage: 2,
-                                    max_tile_damage: 4,
+                                    min_tile_damage: 1,
+                                    max_tile_damage: 2,
                                 },
                             },
                             AbilityCooldown {
-                                timer: Timer::from_seconds(0.3, TimerMode::Once),
-                                timer_reset: 0.3,
+                                timer: Timer::from_seconds(0.0, TimerMode::Once),
+                                timer_reset: 0.5,
                                 timer_ticks: 2,
                             },
                             AbilityMarker {
@@ -254,8 +254,8 @@ impl GameCommand for SpawnAbility {
                                 },
                             },
                             AbilityCooldown {
-                                timer: Timer::from_seconds(0.1, TimerMode::Once),
-                                timer_reset: 0.1,
+                                timer: Timer::from_seconds(0.5, TimerMode::Once),
+                                timer_reset: 0.5,
                                 timer_ticks: 10,
                             },
                             AbilityMarker {

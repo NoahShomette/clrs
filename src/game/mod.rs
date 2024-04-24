@@ -50,6 +50,8 @@ use bevy_ggf::object::{
 };
 use bevy_ggf::player::{Player, PlayerMarker};
 
+use self::end_game::GameEndConditions;
+
 pub struct GameCorePlugin;
 
 impl Plugin for GameCorePlugin {
@@ -102,13 +104,14 @@ pub fn simulate_game(world: &mut World) {
     });
 }
 
-#[derive(Reflect, Clone, Eq, Debug, PartialEq, Resource)]
+#[derive(Reflect, Clone, Debug, PartialEq, Resource)]
 pub struct GameBuildSettings {
     pub map_size: u32,
     pub enemy_count: usize,
     pub map_type: usize,
     pub max_map: usize,
     pub level_sizes: LevelsSizes,
+    pub game_end_conditions: GameEndConditions,
 }
 
 #[derive(Reflect, Clone, Eq, Debug, PartialEq)]
@@ -202,6 +205,9 @@ impl FromWorld for GameBuildSettings {
                     map_type: 0,
                     max_map: assets.get(&maps.levels).unwrap().levels.len(),
                     level_sizes: levels_sizes,
+                    game_end_conditions: GameEndConditions::Percentage {
+                        target_percentage: 0.8,
+                    },
                 };
             })
         })
@@ -446,12 +452,12 @@ pub fn start_game(world: &mut World) {
                         Building {
                             building_type: Pulser {
                                 strength: 7,
-                                max_pulse_tiles: 2,
+                                max_pulse_tiles: 10,
                             },
                         },
                         BuildingCooldown {
                             timer: Timer::from_seconds(0.0, TimerMode::Once),
-                            timer_reset: 0.15,
+                            timer_reset: 0.75,
                         },
                         BuildingMarker::default(),
                         Simulate,
@@ -490,12 +496,12 @@ pub fn start_game(world: &mut World) {
                         Building {
                             building_type: Pulser {
                                 strength: 7,
-                                max_pulse_tiles: 2,
+                                max_pulse_tiles: 10,
                             },
                         },
                         BuildingCooldown {
                             timer: Timer::from_seconds(0.0, TimerMode::Once),
-                            timer_reset: 0.15,
+                            timer_reset: 0.75,
                         },
                         BuildingMarker::default(),
                     ),
@@ -675,6 +681,7 @@ pub fn setup_game(
 
     world.insert_resource(game_data.clone());
     game.game_world.insert_resource(game_data);
+    game.game_world.insert_resource(game_build_settings.clone());
     game.game_world
         .insert_resource(PlayerTileChangedCount::default());
     world.insert_resource(game_build_settings);

@@ -149,12 +149,12 @@ impl GameCommand for SpawnBuilding {
                             Building {
                                 building_type: Pulser {
                                     strength: 7,
-                                    max_pulse_tiles: 2,
+                                    max_pulse_tiles: 10,
                                 },
                             },
                             BuildingCooldown {
-                                timer: Timer::from_seconds(0.15, TimerMode::Once),
-                                timer_reset: 0.15,
+                                timer: Timer::from_seconds(0.75, TimerMode::Once),
+                                timer_reset: 0.75,
                             },
                             BuildingMarker::default(),
                             Simulate,
@@ -195,13 +195,13 @@ impl GameCommand for SpawnBuilding {
                             },
                             Building {
                                 building_type: Scatter {
-                                    scatter_range: 3,
-                                    scatter_amount: 24,
+                                    scatter_range: 4,
+                                    scatter_amount: 10,
                                 },
                             },
                             BuildingCooldown {
-                                timer: Timer::from_seconds(0.15, TimerMode::Once),
-                                timer_reset: 0.15,
+                                timer: Timer::from_seconds(0.35, TimerMode::Once),
+                                timer_reset: 0.35,
                             },
                             BuildingMarker::default(),
                             Simulate,
@@ -243,12 +243,12 @@ impl GameCommand for SpawnBuilding {
                                 building_type: Line {
                                     strength: 10,
                                     hits_per_tile: 2,
-                                    max_changed_per_side: 3,
+                                    max_changed_per_side: 5,
                                 },
                             },
                             BuildingCooldown {
-                                timer: Timer::from_seconds(0.15, TimerMode::Once),
-                                timer_reset: 0.15,
+                                timer: Timer::from_seconds(0.5, TimerMode::Once),
+                                timer_reset: 0.5,
                             },
                             BuildingMarker::default(),
                             Simulate,
