@@ -9,6 +9,7 @@ use bevy::prelude::{Component, Entity, FromReflect, Query, Reflect, With, Withou
 use bevy_ecs_tilemap::tiles::TileStorage;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize};
@@ -74,43 +75,60 @@ pub fn simulate_pulsers_from_cache(
     else {
         return;
     };
+    let mut rng = rand::thread_rng();
 
-    'main_loop: for (entity, id, player_marker, pulser, cache) in pulsers.iter() {
+    for (entity, id, player_marker, pulser, cache) in pulsers.iter() {
         commands.entity(entity).remove::<Activate>();
 
         let mut tiles_changed: u32 = 0;
+        let mut target_tiles = vec![];
 
-        for tile in cache.cache.iter() {
+        for (index, tile) in cache.cache.iter().enumerate() {
             let Some(tile_entity) = tile_storage.get(&Into::<TilePos>::into(*tile)) else {
                 continue;
             };
 
-            if let Ok((_, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
+            if let Ok((_, _, options)) = tiles.get_mut(tile_entity) {
                 if let Some((tile_player_marker, tile_color)) = options.as_ref() {
                     if player_marker.id() == tile_player_marker.id() {
                         if let TileColorStrength::Five = tile_color.tile_color_strength {
                         } else {
-                            tiles_changed += 1;
+                            target_tiles.push((index, tile));
                         }
                     } else {
-                        tiles_changed += 1;
+                        target_tiles.push((index, tile));
                     }
                 } else {
-                    tiles_changed += 1;
+                    target_tiles.push((index, tile));
                 }
 
-                convert_tile(
+                if target_tiles.len() >= (pulser.building_type.max_pulse_tiles + 3) as usize {
+                    break;
+                }
+            }
+        }
+
+        while target_tiles.len() > pulser.building_type.max_pulse_tiles as usize {
+            let removal_index: usize = rng.gen_range(0..target_tiles.len());
+            target_tiles.remove(removal_index);
+        }
+
+        for (_, tile) in target_tiles.iter() {
+            let Some(tile_entity) = tile_storage.get(&Into::<TilePos>::into(**tile)) else {
+                continue;
+            };
+
+            if let Ok((_, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
+                if convert_tile(
                     id,
                     &player_marker.id(),
-                    Into::<TilePos>::into(*tile),
+                    Into::<TilePos>::into(**tile),
                     tile_terrain_info,
                     &options,
                     &mut event_writer,
-                );
-            }
-
-            if tiles_changed >= pulser.building_type.max_pulse_tiles {
-                continue 'main_loop;
+                ) {
+                    tiles_changed += 1;
+                }
             }
         }
 

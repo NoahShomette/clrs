@@ -112,7 +112,7 @@ impl GameCommand for SpawnAbility {
                                 ability_type: Nuke {
                                     strength: 5,
                                     min_tile_damage: 1,
-                                    max_tile_damage: 2,
+                                    max_tile_damage: 3,
                                 },
                             },
                             AbilityCooldown {

@@ -196,7 +196,7 @@ impl GameCommand for SpawnBuilding {
                             Building {
                                 building_type: Scatter {
                                     scatter_range: 4,
-                                    scatter_amount: 10,
+                                    scatter_amount: 20,
                                 },
                             },
                             BuildingCooldown {

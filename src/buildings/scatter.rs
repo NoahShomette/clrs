@@ -86,25 +86,16 @@ pub fn simulate_scatter_from_cache(
                 continue;
             };
             if let Ok((_, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
-                if !check_is_colorable(tile_terrain_info) {
-                    continue;
-                }
-                if let Some((_, tile_color)) = options.as_ref() {
-                    if let TileColorStrength::Five = tile_color.tile_color_strength {
-                    } else {
-                        tiles_changed = tiles_changed + 1;
-                    }
-                } else {
-                    tiles_changed = tiles_changed + 1;
-                }
-                convert_tile(
+                if convert_tile(
                     id,
                     &player_marker.id(),
                     cache.cache[y].into(),
                     tile_terrain_info,
                     &options,
                     &mut event_writer,
-                );
+                ) {
+                    tiles_changed += 1;
+                }
             }
         }
 

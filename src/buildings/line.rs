@@ -92,29 +92,17 @@ pub fn simulate_lines_from_cache(
             }
             if let Ok((_, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
                 for _ in 0..line.building_type.hits_per_tile {
-                    if let Some((tile_player_marker, tile_color)) = options.as_ref() {
-                        if player_marker.id() == tile_player_marker.id() {
-                            if let TileColorStrength::Five = tile_color.tile_color_strength {
-                            } else {
-                                sides_changed[index] += 1;
-                                tiles_changed += 1;
-                            }
-                        } else {
-                            sides_changed[index] += 1;
-                            tiles_changed += 1;
-                        }
-                    } else {
-                        sides_changed[index] += 1;
-                        tiles_changed += 1;
-                    }
-                    convert_tile(
+                    if convert_tile(
                         id,
                         &player_marker.id(),
                         Into::<TilePos>::into(*tile),
                         tile_terrain_info,
                         &options,
                         &mut event_writer,
-                    );
+                    ) {
+                        sides_changed[index] += 1;
+                        tiles_changed += 1;
+                    }
 
                     if sides_changed[index] >= line.building_type.max_changed_per_side {
                         continue 'main_loop;

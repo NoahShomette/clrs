@@ -176,8 +176,7 @@ impl PathfindCallback<TilePos> for ColorConflictCallback {
     }
 }
 
-/// Function that will take the tile query and the player and see if - returns whether the checked
-/// tile is the given players team
+/// Function that will take the tile query and the player and see returns whether a tile was converted or not
 pub fn convert_tile(
     from_object: &ObjectId,
     player: &usize,
@@ -198,14 +197,16 @@ pub fn convert_tile(
                     tile_pos,
                     player: *player,
                 });
+                return true;
             }
-            return true;
+            return false;
         } else {
             event_writer.send(ColorConflictEvent {
                 from_object: *from_object,
                 tile_pos,
                 player: *player,
             });
+            return true;
         }
     } else {
         event_writer.send(ColorConflictEvent {
@@ -213,8 +214,8 @@ pub fn convert_tile(
             tile_pos,
             player: *player,
         });
+        return true;
     }
-    return false;
 }
 
 pub fn update_color_conflicts(
