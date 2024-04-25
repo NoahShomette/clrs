@@ -235,8 +235,8 @@ pub fn update_color_conflicts(
         color_conflicts.register_conflict_guarantee(
             event.tile_pos,
             event.casting_player,
-            event.affect_neutral,
             event.affect_casting_player,
+            event.affect_neutral,
             event.affect_other_players,
             event.conflict_type,
         );
@@ -523,9 +523,12 @@ pub struct ColorConflictGuarantees {
 
 #[derive(Default, Clone, Copy, Eq, Debug, PartialEq, Reflect, FromReflect)]
 pub enum ConflictType {
+    /// Default setting. If its the casting players it will strengthen and if its other players or neutral it will try and conquer.
     #[default]
     Natural,
+    /// Damages only
     Damage,
+    /// Strengthen only
     Stengthen,
 }
 

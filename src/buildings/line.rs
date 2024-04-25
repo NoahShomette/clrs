@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
-use crate::buildings::{
-    check_is_colorable, get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode,
-};
-use crate::color_system::{convert_tile, ColorConflictEvent, TileColor, TileColorStrength};
+use crate::buildings::{get_neighbors_tilepos, Activate, Building};
+use crate::color_system::{convert_tile, ColorConflictEvent, TileColor};
 use crate::objects::{ObjectCachedMap, TileToObjectIndex};
 use crate::pathfinding::{AddObjectToTileToObjectIndex, RemoveObjectFromTileToObjectIndex};
 use bevy::ecs::world::World;

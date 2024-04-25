@@ -1,5 +1,5 @@
-use crate::buildings::{check_is_colorable, Activate, Building};
-use crate::color_system::{convert_tile, ColorConflictEvent, TileColor, TileColorStrength};
+use crate::buildings::{Activate, Building};
+use crate::color_system::{convert_tile, ColorConflictEvent, TileColor};
 use crate::objects::ObjectCachedMap;
 use bevy::prelude::{
     Commands, Component, Entity, EventWriter, FromReflect, Query, Reflect, With, Without,
@@ -13,7 +13,7 @@ use bevy_ggf::player::PlayerMarker;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-use super::building_pathfinding::SimpleBuildingPathfindMapExt;
+use super::building_pathfinding::PathfindStrengthExt;
 use super::Simulate;
 
 #[derive(
@@ -34,14 +34,12 @@ pub struct Scatter {
     pub scatter_amount: u32,
 }
 
-impl SimpleBuildingPathfindMapExt for Scatter {
-    fn building_strength(&self) -> u32 {
+impl PathfindStrengthExt for Scatter {
+    fn pathfinding_strength(&self) -> u32 {
         self.scatter_range
     }
 }
 
-// two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
-// are not the same player then we damage their color by one. Otherwise at that point we stop.
 pub fn simulate_scatter_from_cache(
     mut tile_storage_query: Query<(Entity, &MapId, &TileStorage, &TilemapSize)>,
     pulsers: Query<

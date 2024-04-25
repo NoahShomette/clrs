@@ -12,8 +12,7 @@ use crate::game::GameData;
 use crate::player::PlayerPoints;
 use bevy::ecs::system::SystemState;
 use bevy::prelude::{
-    Bundle, Commands, Component, Entity, FromReflect, Query, Reflect, Res, ResMut, Timer, With,
-    Without, World,
+    Commands, Component, Entity, FromReflect, Query, Reflect, Res, Timer, With, Without, World,
 };
 use bevy::time::{Time, TimerMode};
 use bevy::utils::hashbrown::HashMap;
@@ -22,9 +21,9 @@ use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::game_core::change_detection::DespawnObject;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
 use bevy_ggf::game_core::saving::{BinaryComponentId, SaveId};
-use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
+use bevy_ggf::game_core::state::Changed;
 use bevy_ggf::mapping::terrain::{TerrainClass, TileTerrainInfo};
-use bevy_ggf::mapping::tiles::{ObjectStackingClass, StackingClass, Tile, TileObjectStacks};
+use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::{Object, ObjectGridPosition, ObjectId, ObjectInfo};
 use bevy_ggf::player::{Player, PlayerMarker};

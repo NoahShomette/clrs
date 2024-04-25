@@ -46,9 +46,9 @@ fn setup_menu(
     let modal = modal_panel(
         PauseUiThing,
         ModalStyle {
-            with_close_button: true,
+            with_close_button: false,
             close_button_bundle: Some(PauseUiCloseButton),
-            modal_size: Some(Size::new(Val::Percent(60.0), Val::Percent(80.0))),
+            modal_size: None,
         },
         &mut commands,
         &font_assets,

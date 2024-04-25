@@ -14,14 +14,13 @@ use bevy::{
 use bevy_ecs_tilemap::tiles::TilePos;
 use bevy_ggf::{
     game_core::change_detection::DespawnObject,
-    mapping::{object, tiles::TilePosition, MapId},
+    mapping::{tiles::TilePosition, MapId},
     movement::{TileMoveCheckMeta, TileMoveChecks},
     object::ObjectId,
     pathfinding::{dijkstra::Node, PathfindAlgorithm, PathfindMap},
 };
 
 use crate::{
-    buildings::Building,
     color_system::ColorConflictCallback,
     pathfinding::{
         AddObjectToTileToObjectIndex, IsColorableNodeCheck, RemoveObjectFromTileToObjectIndex,
@@ -64,10 +63,10 @@ pub fn update_objects_index(
 
 // two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
 // are not the same player then we damage their color by one. Otherwise at that point we stop.
-pub fn simulate_simple_building_cache<
+pub fn simulate_simple_pathfind_object_cache<
     Type: Component,
-    Pathfinder: PathfindAlgorithm<TilePos, Node, Building<Type>> + Default,
-    PathfinderMap: PathfindMap<TilePos, Node, Pathfinder::PathfindOutput, Building<Type>>
+    Pathfinder: PathfindAlgorithm<TilePos, Node, Type> + Default,
+    PathfinderMap: PathfindMap<TilePos, Node, Pathfinder::PathfindOutput, Type>
         + Default
         + AddObjectToTileToObjectIndex,
 >(
@@ -76,14 +75,7 @@ pub fn simulate_simple_building_cache<
     world.resource_scope(
         |mut world: &mut World, mut tile_to_object_index: Mut<TileToObjectIndex>| {
             let mut system_state: SystemState<
-                Query<
-                    (Entity, &ObjectId),
-                    (
-                        Without<MapId>,
-                        Without<ObjectCachedMap>,
-                        With<Building<Type>>,
-                    ),
-                >,
+                Query<(Entity, &ObjectId), (Without<MapId>, Without<ObjectCachedMap>, With<Type>)>,
             > = SystemState::new(&mut world);
             let pulsers = system_state.get_mut(&mut world);
 
@@ -137,10 +129,10 @@ pub fn simulate_simple_building_cache<
 
 // two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
 // are not the same player then we damage their color by one. Otherwise at that point we stop.
-pub fn delete_building_from_tile_index_cache<
+pub fn delete_pathfind_object_from_tile_index_cache<
     Type: Component,
-    Pathfinder: PathfindAlgorithm<TilePos, Node, Building<Type>> + Default,
-    PathfinderMap: PathfindMap<TilePos, Node, Pathfinder::PathfindOutput, Building<Type>>
+    Pathfinder: PathfindAlgorithm<TilePos, Node, Type> + Default,
+    PathfinderMap: PathfindMap<TilePos, Node, Pathfinder::PathfindOutput, Type>
         + Default
         + RemoveObjectFromTileToObjectIndex,
 >(
@@ -149,10 +141,7 @@ pub fn delete_building_from_tile_index_cache<
     world.resource_scope(
         |mut world: &mut World, mut tile_to_object_index: Mut<TileToObjectIndex>| {
             let mut system_state: SystemState<
-                Query<
-                    (Entity, &ObjectId),
-                    (Without<MapId>, With<Building<Type>>, With<DespawnObject>),
-                >,
+                Query<(Entity, &ObjectId), (Without<MapId>, With<Type>, With<DespawnObject>)>,
             > = SystemState::new(&mut world);
             let pulsers = system_state.get_mut(&mut world);
 

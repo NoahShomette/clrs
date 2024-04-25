@@ -17,7 +17,7 @@ use bevy_ggf::mapping::MapId;
 use bevy_ggf::object::ObjectId;
 use bevy_ggf::player::PlayerMarker;
 
-use super::building_pathfinding::SimpleBuildingPathfindMapExt;
+use super::building_pathfinding::PathfindStrengthExt;
 use super::Simulate;
 
 #[derive(
@@ -38,8 +38,8 @@ pub struct Pulser {
     pub max_pulse_tiles: u32,
 }
 
-impl SimpleBuildingPathfindMapExt for Pulser {
-    fn building_strength(&self) -> u32 {
+impl PathfindStrengthExt for Pulser {
+    fn pathfinding_strength(&self) -> u32 {
         self.strength
     }
 }
@@ -109,7 +109,7 @@ pub fn simulate_pulsers_from_cache(
         }
 
         while target_tiles.len() > pulser.building_type.max_pulse_tiles as usize {
-            let removal_index: usize = rng.gen_range(0..target_tiles.len());
+            let removal_index: usize = rng.gen_range(1..target_tiles.len());
             target_tiles.remove(removal_index);
         }
 

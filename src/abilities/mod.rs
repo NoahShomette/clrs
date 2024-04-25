@@ -12,14 +12,14 @@ use crate::game::GameData;
 use crate::player::PlayerPoints;
 use bevy::ecs::system::SystemState;
 use bevy::prelude::{
-    Commands, Component, Entity, FromReflect, Query, Reflect, Res, ResMut, Time, Timer, TimerMode,
-    With, Without, World,
+    Commands, Component, Entity, FromReflect, Query, Reflect, Res, Time, Timer, TimerMode, With,
+    Without, World,
 };
 use bevy_ecs_tilemap::prelude::TileStorage;
 use bevy_ecs_tilemap::tiles::TilePos;
-use bevy_ggf::game_core::change_detection::{despawn_objects, DespawnObject};
+use bevy_ggf::game_core::change_detection::DespawnObject;
 use bevy_ggf::game_core::command::{GameCommand, GameCommands};
-use bevy_ggf::game_core::state::{Changed, DespawnedObjects};
+use bevy_ggf::game_core::state::Changed;
 use bevy_ggf::mapping::terrain::{TerrainClass, TileTerrainInfo};
 use bevy_ggf::mapping::tiles::{ObjectStackingClass, Tile, TileObjectStacks};
 use bevy_ggf::mapping::MapId;
@@ -187,12 +187,12 @@ impl GameCommand for SpawnAbility {
                                 },
                             },
                             AbilityCooldown {
-                                timer: Timer::from_seconds(0.3, TimerMode::Once),
-                                timer_reset: 0.3,
-                                timer_ticks: 20,
+                                timer: Timer::from_seconds(0.5, TimerMode::Once),
+                                timer_reset: 0.5,
+                                timer_ticks: 10,
                             },
                             AbilityMarker {
-                                requires_player_territory: false,
+                                requires_player_territory: true,
                             },
                             Simulate,
                         ),
@@ -296,9 +296,7 @@ pub fn destroy_abilities(
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut commands: Commands,
 ) {
-    for (ability_entity, object_id, ability, object_grid_pos, object_stacking_class) in
-        abilities.iter()
-    {
+    for (ability_entity, _, _, object_grid_pos, object_stacking_class) in abilities.iter() {
         let Some((_, tile_storage)) = tile_storage_query
             .iter_mut()
             .find(|(id, _)| id == &&MapId { id: 1 })
@@ -310,7 +308,7 @@ pub fn destroy_abilities(
             .get(&object_grid_pos.tile_position.into())
             .unwrap();
 
-        let Ok((entity, mut tile_object_stacks)) = tiles.get_mut(tile_entity) else {
+        let Ok((_, mut tile_object_stacks)) = tiles.get_mut(tile_entity) else {
             continue;
         };
 

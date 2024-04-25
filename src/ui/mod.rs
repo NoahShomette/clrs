@@ -299,7 +299,7 @@ struct ModalCloseButtonMarker(Entity);
 fn modal_panel<T>(
     menu_type: T,
     modal_style: ModalStyle<impl Bundle>,
-    mut commands: &mut Commands,
+    commands: &mut Commands,
     font_assets: &Res<FontAssets>,
 ) -> Entity
 where

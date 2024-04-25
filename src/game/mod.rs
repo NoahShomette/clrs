@@ -1,13 +1,13 @@
 pub mod end_game;
 pub mod state;
 
-use crate::abilities::expand::simulate_expands;
-use crate::abilities::fortify::simulate_fortifies;
-use crate::abilities::nuke::simulate_nukes;
-use crate::abilities::{destroy_abilities, update_ability_timers};
+use crate::abilities::expand::{simulate_expand_from_cache, Expand};
+use crate::abilities::fortify::{simulate_fortify_from_cache, Fortify};
+use crate::abilities::nuke::{simulate_nuke_from_cache, Nuke};
+use crate::abilities::{destroy_abilities, update_ability_timers, Ability};
 use crate::actions::Actions;
 use crate::ai::{run_ai_ability, run_ai_building};
-use crate::buildings::building_pathfinding::{BuildingPathfinder, SimpleBuildingPathfindMap};
+use crate::buildings::building_pathfinding::{SimplePathfindMap, SimplePathfinder};
 use crate::buildings::line::{simulate_lines_from_cache, Line, LinePathfindMap};
 use crate::buildings::pulser::{simulate_pulsers_from_cache, Pulser};
 use crate::buildings::scatter::{simulate_scatter_from_cache, Scatter};
@@ -24,8 +24,8 @@ use crate::game::state::update_main_world_game_state;
 use crate::level_loader::{LevelHandle, Levels};
 use crate::mapping::map::MapCommandsExt;
 use crate::objects::{
-    delete_building_from_tile_index_cache, simulate_simple_building_cache, update_objects_index,
-    ObjectIndex, TileToObjectIndex,
+    delete_pathfind_object_from_tile_index_cache, simulate_simple_pathfind_object_cache,
+    update_objects_index, ObjectIndex, TileToObjectIndex,
 };
 use crate::player::{update_player_points, PlayerPoints};
 use crate::{GamePausedState, GameState};
@@ -557,31 +557,50 @@ pub fn setup_game(
             update_building_timers,
             update_ability_timers,
             apply_system_buffers,
-            simulate_simple_building_cache::<
-                Pulser,
-                BuildingPathfinder<Pulser>,
-                SimpleBuildingPathfindMap<Pulser>,
+            simulate_simple_pathfind_object_cache::<
+                Building<Pulser>,
+                SimplePathfinder<Building<Pulser>>,
+                SimplePathfindMap<Building<Pulser>>,
             >,
-            simulate_simple_building_cache::<Line, BuildingPathfinder<Line>, LinePathfindMap>,
-            simulate_simple_building_cache::<
-                Scatter,
-                BuildingPathfinder<Scatter>,
-                SimpleBuildingPathfindMap<Scatter>,
+            simulate_simple_pathfind_object_cache::<
+                Building<Line>,
+                SimplePathfinder<Building<Line>>,
+                LinePathfindMap,
+            >,
+            simulate_simple_pathfind_object_cache::<
+                Building<Scatter>,
+                SimplePathfinder<Building<Scatter>>,
+                SimplePathfindMap<Building<Scatter>>,
+            >,
+            simulate_simple_pathfind_object_cache::<
+                Ability<Nuke>,
+                SimplePathfinder<Ability<Nuke>>,
+                SimplePathfindMap<Ability<Nuke>>,
+            >,
+            simulate_simple_pathfind_object_cache::<
+                Ability<Expand>,
+                SimplePathfinder<Ability<Expand>>,
+                SimplePathfindMap<Ability<Expand>>,
+            >,
+            simulate_simple_pathfind_object_cache::<
+                Ability<Fortify>,
+                SimplePathfinder<Ability<Fortify>>,
+                SimplePathfindMap<Ability<Fortify>>,
             >,
             apply_system_buffers,
             simulate_pulsers_from_cache,
-            simulate_lines_from_cache,
-            simulate_scatter_from_cache,
-            simulate_nukes,
-            simulate_expands,
-            simulate_fortifies,
         )
             .chain()
             .in_base_set(GameSets::Core),
     );
     schedule.add_systems(
         (
-            update_color_conflicts.after(simulate_expands),
+            simulate_lines_from_cache.after(simulate_pulsers_from_cache),
+            simulate_scatter_from_cache,
+            simulate_nuke_from_cache,
+            simulate_expand_from_cache,
+            simulate_fortify_from_cache,
+            update_color_conflicts,
             run_ai_building,
             run_ai_ability,
             handle_color_conflict_guarantees,
@@ -596,20 +615,35 @@ pub fn setup_game(
     );
     schedule.add_systems(
         (
-            delete_building_from_tile_index_cache::<
-                Pulser,
-                BuildingPathfinder<Pulser>,
-                SimpleBuildingPathfindMap<Pulser>,
+            delete_pathfind_object_from_tile_index_cache::<
+                Building<Pulser>,
+                SimplePathfinder<Building<Pulser>>,
+                SimplePathfindMap<Building<Pulser>>,
             >,
-            delete_building_from_tile_index_cache::<
-                Line,
-                BuildingPathfinder<Line>,
+            delete_pathfind_object_from_tile_index_cache::<
+                Building<Line>,
+                SimplePathfinder<Building<Line>>,
                 LinePathfindMap,
             >,
-            delete_building_from_tile_index_cache::<
-                Scatter,
-                BuildingPathfinder<Scatter>,
-                SimpleBuildingPathfindMap<Scatter>,
+            delete_pathfind_object_from_tile_index_cache::<
+                Building<Scatter>,
+                SimplePathfinder<Building<Scatter>>,
+                SimplePathfindMap<Building<Scatter>>,
+            >,
+            delete_pathfind_object_from_tile_index_cache::<
+                Ability<Nuke>,
+                SimplePathfinder<Ability<Nuke>>,
+                SimplePathfindMap<Ability<Nuke>>,
+            >,
+            delete_pathfind_object_from_tile_index_cache::<
+                Ability<Expand>,
+                SimplePathfinder<Ability<Expand>>,
+                SimplePathfindMap<Ability<Expand>>,
+            >,
+            delete_pathfind_object_from_tile_index_cache::<
+                Ability<Fortify>,
+                SimplePathfinder<Ability<Fortify>>,
+                SimplePathfindMap<Ability<Fortify>>,
             >,
             apply_system_buffers,
             update_player_points,

@@ -2,34 +2,34 @@
 
 use std::{collections::BTreeMap, marker::PhantomData};
 
-use bevy::{ecs::{entity::Entity, system::{Query, Resource, SystemState}, world::{Mut, World}}, utils::HashMap};
+use bevy::{ecs::{component::Component, entity::Entity, system::{Query, Resource, SystemState}, world::{Mut, World}}, utils::HashMap};
 use bevy_ecs_tilemap::{map::TilemapSize, tiles::TilePos};
 use bevy_ggf::{mapping::MapId, movement::TileMoveChecks, object::{ObjectGridPosition, ObjectId}, pathfinding::{dijkstra::Node, MapNode, PathfindAlgorithm, PathfindCallback, PathfindMap}, player::PlayerMarker};
 
-use crate::{mapping::map::MapTileStorage, objects::TileToObjectIndex, pathfinding::{AddObjectToTileToObjectIndex, RemoveObjectFromTileToObjectIndex}};
+use crate::{abilities::Ability, mapping::map::MapTileStorage, objects::TileToObjectIndex, pathfinding::{AddObjectToTileToObjectIndex, RemoveObjectFromTileToObjectIndex}};
 
 use super::Building;
 
 
 
 #[derive(Resource)]
-pub struct BuildingQueryState<BuildingType: Send + Sync + 'static> {
+pub struct BuildingQueryState<BuildingType: Send + Sync + 'static + Component> {
     pub query:
-        SystemState<Query<'static, 'static, (&'static ObjectGridPosition, &'static PlayerMarker, &'static Building<BuildingType>)>>,
+        SystemState<Query<'static, 'static, (&'static ObjectGridPosition, &'static PlayerMarker, &'static BuildingType)>>,
 }
 
 
 #[derive(Default)]
-pub struct BuildingPathfinder<BuildingType>{
+pub struct SimplePathfinder<BuildingType>{
     pd: PhantomData<BuildingType>
 }
 
-impl<BuildingType: Send + Sync + 'static> PathfindAlgorithm<TilePos, Node, Building<BuildingType>> for BuildingPathfinder<BuildingType> {
+impl<BuildingType: Send + Sync + 'static + Component> PathfindAlgorithm<TilePos, Node, BuildingType> for SimplePathfinder<BuildingType> {
     type PathfindOutput = ();
 
     fn pathfind<
         CB: PathfindCallback<TilePos>,
-        PM: PathfindMap<TilePos, Node, (), Building<BuildingType>>,
+        PM: PathfindMap<TilePos, Node, (), BuildingType>,
     >(
         &mut self,
         _: MapId,
@@ -42,7 +42,7 @@ impl<BuildingType: Send + Sync + 'static> PathfindAlgorithm<TilePos, Node, Build
         world.resource_scope(|mut world, maptile_storage: Mut<MapTileStorage>|{
             let mut pulser_query_state = match world.remove_resource::<BuildingQueryState<BuildingType>>() {
                 None => {                    
-                    let system_state: SystemState<Query<(&ObjectGridPosition, &PlayerMarker, &Building<BuildingType>)>> = SystemState::new(world);
+                    let system_state: SystemState<Query<(&ObjectGridPosition, &PlayerMarker, &BuildingType)>> = SystemState::new(world);
                     BuildingQueryState{
                     query: system_state,
                 }}
@@ -156,16 +156,28 @@ impl<BuildingType: Send + Sync + 'static> PathfindAlgorithm<TilePos, Node, Build
 
 
 #[derive(Default)]
-pub struct SimpleBuildingPathfindMap<BuildingType: SimpleBuildingPathfindMapExt> {
+pub struct SimplePathfindMap<BuildingType: PathfindStrengthExt> {
     pub map: HashMap<TilePos, Node>,
     pd: PhantomData<BuildingType>
 }
 
-pub trait SimpleBuildingPathfindMapExt{
-    fn building_strength(&self) -> u32;
+pub trait PathfindStrengthExt{
+    fn pathfinding_strength(&self) -> u32;
 }
 
-impl<BuildingType: SimpleBuildingPathfindMapExt> RemoveObjectFromTileToObjectIndex for SimpleBuildingPathfindMap<BuildingType>{
+impl<T> PathfindStrengthExt for Building<T> where T: PathfindStrengthExt{
+    fn pathfinding_strength(&self) -> u32 {
+        self.building_type.pathfinding_strength()
+    }
+}
+
+impl<T> PathfindStrengthExt for Ability<T> where T: PathfindStrengthExt{
+    fn pathfinding_strength(&self) -> u32 {
+        self.ability_type.pathfinding_strength()
+    }
+}
+
+impl<BuildingType: PathfindStrengthExt> RemoveObjectFromTileToObjectIndex for SimplePathfindMap<BuildingType>{
     fn remove_from_index(&mut self, object_id: ObjectId, tile_to_object_index: &mut TileToObjectIndex) {
         for (tile_pos, tile_node) in self.map.iter() {
             if tile_node.valid_move {
@@ -179,7 +191,7 @@ impl<BuildingType: SimpleBuildingPathfindMapExt> RemoveObjectFromTileToObjectInd
     }
 }
 
-impl<BuildingType: SimpleBuildingPathfindMapExt> AddObjectToTileToObjectIndex for SimpleBuildingPathfindMap<BuildingType>{
+impl<BuildingType: PathfindStrengthExt> AddObjectToTileToObjectIndex for SimplePathfindMap<BuildingType>{
     fn add_to_index(&mut self, object_id: ObjectId, tile_to_object_index: &mut TileToObjectIndex, btree_cache: &mut BTreeMap<u8, Vec<TilePos>>) {
         for (tile_pos, tile_node) in self.map.iter() {
             if tile_node.valid_move {
@@ -196,7 +208,7 @@ impl<BuildingType: SimpleBuildingPathfindMapExt> AddObjectToTileToObjectIndex fo
 }
 
 
-impl<BuildingType: Send + Sync + 'static + SimpleBuildingPathfindMapExt> PathfindMap<TilePos, Node, (), Building<BuildingType>> for SimpleBuildingPathfindMap<BuildingType> {
+impl<BuildingType: Send + Sync + 'static + PathfindStrengthExt + Component> PathfindMap<TilePos, Node, (), BuildingType> for SimplePathfindMap<BuildingType> {
     fn new_pathfind_map(&mut self, starting_pos: TilePos) {
         let mut map: HashMap<TilePos, Node> = HashMap::default();
         // insert the starting node at the moving objects grid position
@@ -222,7 +234,7 @@ impl<BuildingType: Send + Sync + 'static + SimpleBuildingPathfindMapExt> Pathfin
         move_from_tile_pos: TilePos,
         world: &World,
     ) -> bool {
-        let Some(object_movement) = world.get::<Building<BuildingType>>(entity_moving) else {
+        let Some(object_movement) = world.get::<BuildingType>(entity_moving) else {
             return false;
         };
 
@@ -241,7 +253,7 @@ impl<BuildingType: Send + Sync + 'static + SimpleBuildingPathfindMapExt> Pathfin
                 false
             }
         } else if (move_from_tile_node.move_cost + 1)
-            <= object_movement.building_type.building_strength()
+            <= object_movement.pathfinding_strength()
         {
             tile_node.move_cost = move_from_tile_node.move_cost + 1;
             tile_node.prior_node_pos = move_from_tile_node.node_pos;
