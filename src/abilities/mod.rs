@@ -187,7 +187,7 @@ impl GameCommand for SpawnAbility {
                                 },
                             },
                             AbilityCooldown {
-                                timer: Timer::from_seconds(0.5, TimerMode::Once),
+                                timer: Timer::from_seconds(0.0, TimerMode::Once),
                                 timer_reset: 0.5,
                                 timer_ticks: 10,
                             },
@@ -254,7 +254,7 @@ impl GameCommand for SpawnAbility {
                                 },
                             },
                             AbilityCooldown {
-                                timer: Timer::from_seconds(0.5, TimerMode::Once),
+                                timer: Timer::from_seconds(0.0, TimerMode::Once),
                                 timer_reset: 0.5,
                                 timer_ticks: 10,
                             },
