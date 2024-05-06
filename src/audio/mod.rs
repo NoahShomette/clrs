@@ -44,6 +44,7 @@ struct EffectSounds;
 #[derive(Resource)]
 struct BackgroundSounds;
 
+/// minimum, default, maximum
 #[derive(Resource)]
 pub(crate) struct GameSoundSettings {
     is_sound_on: bool,
@@ -66,13 +67,49 @@ impl Default for GameSoundSettings {
 }
 
 impl GameSoundSettings {
-    fn toggle_sound(&mut self, mut sound_settings_event: &mut EventWriter<SoundSettingsEvents>) {
+    pub fn toggle_sound(
+        &mut self,
+        mut sound_settings_event: &mut EventWriter<SoundSettingsEvents>,
+    ) {
         self.is_sound_on = !self.is_sound_on;
         sound_settings_event.send(SoundSettingsEvents::SoundToggle(self.is_sound_on));
     }
-    fn toggle_bg_sound(&mut self, mut sound_settings_event: &mut EventWriter<SoundSettingsEvents>) {
+    pub fn toggle_bg_sound(
+        &mut self,
+        mut sound_settings_event: &mut EventWriter<SoundSettingsEvents>,
+    ) {
         self.is_bg_sound_on = !self.is_bg_sound_on;
         sound_settings_event.send(SoundSettingsEvents::BGToggle(self.is_bg_sound_on));
+    }
+
+    pub fn current_bg_sound(&self) -> f64 {
+        self.bg_sound_level.1
+    }
+
+    pub fn sound_level(&self) -> f64 {
+        self.sound_level.1
+    }
+
+    pub fn sound_min(&self) -> f64 {
+        self.sound_level.0
+    }
+
+    pub fn sound_max(&self) -> f64 {
+        self.sound_level.2
+    }
+
+    pub fn increase_sound_level(&mut self) {
+        self.sound_level.1 += 0.05;
+        if self.sound_level.1 > self.sound_level.2 {
+            self.sound_level.1 = self.sound_level.2;
+        }
+    }
+
+    pub fn decrease_sound_level(&mut self) {
+        self.sound_level.1 -= 0.05;
+        if self.sound_level.1 < self.sound_level.0 {
+            self.sound_level.1 = self.sound_level.0;
+        }
     }
 }
 
@@ -125,9 +162,14 @@ fn start_audio(mut commands: Commands, audio: ResMut<bevy_kira_audio::Audio>) {
 
 fn handle_spawned_object_sounds(
     query: Query<(Entity, &ObjectInfo), With<ObjectSpawnedSound>>,
+    sound_settings: Res<GameSoundSettings>,
     mut events: EventWriter<GameSoundEvents>,
     mut commands: Commands,
 ) {
+    if !sound_settings.is_sound_on {
+        return;
+    }
+
     for (entity, object_info) in query.iter() {
         match object_info.object_type.name.as_str() {
             "Pulser" | "Line" | "Scatter" => events.send(GameSoundEvents::PlaceBuilding),
@@ -225,6 +267,6 @@ fn control_place_build_sound(
         }
         audio
             .play(audio_assets.place_build.clone())
-            .with_volume(0.3 * sound_settings.effects_sound_level.1);
+            .with_volume(0.3 * sound_settings.sound_level.1);
     }
 }

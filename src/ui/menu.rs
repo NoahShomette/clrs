@@ -1,3 +1,4 @@
+use crate::audio::GameSoundSettings;
 use crate::game::{setup_game_resource, GameBuildSettings};
 use crate::level_loader::{LevelHandle, Levels};
 use crate::loading::FontAssets;
@@ -7,6 +8,8 @@ use bevy::ecs::system::Insert;
 use bevy::prelude::*;
 
 use crate::ui::{modal_panel, BasicButton, DisabledButton, ModalStyle, PlayerColors};
+
+use super::settings_menu::spawn_settings_menu;
 
 pub struct MenuPlugin;
 
@@ -36,7 +39,7 @@ impl Plugin for MenuPlugin {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 struct MenuUiThing;
 
 #[derive(Component)]
@@ -549,6 +552,7 @@ fn click_play_button(
         (Changed<Interaction>, (With<Button>)),
     >,
     font_assets: Res<FontAssets>,
+    sound_settings: Res<GameSoundSettings>,
 ) {
     for (
         _,
@@ -620,7 +624,7 @@ fn click_play_button(
         }
 
         if let Some(_) = option_sb {
-            modal_panel(
+            spawn_settings_menu(
                 MenuUiThing,
                 ModalStyle {
                     with_close_button: true,
@@ -629,8 +633,9 @@ fn click_play_button(
                 },
                 &mut commands,
                 &font_assets,
+                player_colors.as_ref(),
+                &sound_settings,
             );
-            //TODO: Add settings after we make the pop up template
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -936,7 +941,7 @@ fn cleanup_menu(mut commands: Commands, button: Query<Entity, With<MenuUiThing>>
     }
 }
 
-fn back_and_forth_button<T, B, F>(
+pub fn back_and_forth_button<T, B, F>(
     parent: &mut ChildBuilder,
     font_assets: &Res<FontAssets>,
     menu_type: T,

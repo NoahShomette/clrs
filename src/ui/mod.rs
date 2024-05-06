@@ -4,6 +4,7 @@ mod end_game;
 mod game;
 mod menu;
 mod pause;
+mod settings_menu;
 mod widgets;
 
 use crate::loading::colors_loader::{PalettesAssets, PalettesHandle};
@@ -20,6 +21,7 @@ use bevy_tweening::{Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween};
 use std::time::Duration;
 
 use self::dev::DevPlugin;
+use self::settings_menu::SettingsPlugin;
 
 pub struct UiPlugin;
 
@@ -29,7 +31,8 @@ impl Plugin for UiPlugin {
             .add_plugin(GameUiPlugin)
             .add_plugin(PauseUiPlugin)
             .add_plugin(EndGameUiPlugin)
-            .add_plugin(DevPlugin);
+            .add_plugin(DevPlugin)
+            .add_plugin(SettingsPlugin);
 
         app.add_systems((
             handle_button_visuals,

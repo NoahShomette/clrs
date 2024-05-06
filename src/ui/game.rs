@@ -2,7 +2,7 @@
 use crate::actions::Actions;
 use crate::buildings::BuildingTypes::{Line, Pulser, Scatter};
 use crate::color_system::TileColor;
-use crate::game::{start_game, GameData};
+use crate::game::{start_game, GameBuildSettings, GameData};
 use crate::loading::{FontAssets, TextureAssets};
 use crate::player::PlayerPoints;
 use crate::{GamePausedState, GameState};
@@ -222,6 +222,7 @@ fn setup_menu(
     >,
     player_queries: Query<(&Player, &PlayerPoints), Without<PlayerMarker>>,
     game: Res<GameData>,
+    game_build_settings: Res<GameBuildSettings>,
 ) {
     for (player, actions) in player_actions.iter() {
         if player.id() != 0 {
@@ -511,6 +512,7 @@ fn setup_menu(
                                     &player_queries,
                                     &font_assets,
                                     &game,
+                                    &game_build_settings,
                                 );
                             });
                     });
@@ -693,6 +695,7 @@ fn handle_player_cubes_and_stats(
     action_queries: Query<(&PlayerMarker, &Actions), Without<Player>>,
     font_assets: Res<FontAssets>,
     game: Res<GameData>,
+    game_build_settings: Res<GameBuildSettings>,
 ) {
     let Ok((entity, player_cubes_parent)) = player_cubes_parent.get_single() else {
         return;
@@ -707,6 +710,7 @@ fn handle_player_cubes_and_stats(
             &player_queries,
             &font_assets,
             &game,
+            &game_build_settings,
         );
     });
 }
@@ -726,6 +730,7 @@ fn generate_all_player_cubes(
     player_queries: &Query<(&Player, &PlayerPoints), Without<PlayerMarker>>,
     font_assets: &Res<FontAssets>,
     game: &Res<GameData>,
+    game_build_settings: &GameBuildSettings,
 ) {
     let mut player_tile_count: HashMap<usize, i32> = HashMap::new();
 
@@ -748,17 +753,27 @@ fn generate_all_player_cubes(
         if player_query.id() == 0 {
             parent.spawn(NodeBundle {
                 style: Style {
-                    size: Size::new(Val::Percent(80.0), Val::Px(5.0)),
+                    size: Size::new(Val::Percent(90.0), Val::Px(5.0)),
                     position_type: PositionType::Relative,
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
-                    margin: UiRect::all(Val::Px(10.0)),
+                    margin: UiRect::new(Val::Px(10.0), Val::Px(35.0), Val::Px(10.0), Val::Px(10.0)),
+                    //padding: UiRect::right(Val::Px(65.0)),
                     ..default()
                 },
                 background_color: Color::DARK_GRAY.into(),
                 ..default()
             });
         }
+
+        let max_tile_count = match game_build_settings.game_end_conditions {
+            crate::game::end_game::GameEndConditions::Domination => {
+                (game.map_size_x * game.map_size_y) as usize
+            }
+            crate::game::end_game::GameEndConditions::Percentage { target_percentage } => {
+                ((game.map_size_x * game.map_size_y) as f32 * target_percentage) as usize
+            }
+        };
 
         generate_player_cubes(
             parent,
@@ -767,7 +782,7 @@ fn generate_all_player_cubes(
                 .get(&player_query.id())
                 .unwrap_or(&0)
                 .clone() as usize,
-            (game.map_size_x * game.map_size_y) as usize,
+            max_tile_count,
             &player_colors,
         );
         if player_query.id() == 0 {
@@ -833,6 +848,7 @@ fn generate_player_cubes(
                 align_items: AlignItems::Center,
                 flex_direction: FlexDirection::RowReverse,
                 margin: UiRect::all(Val::Px(5.0)),
+                padding: UiRect::right(Val::Px(35.0)),
                 ..default()
             },
             background_color: Color::rgba(0.65, 0.65, 0.1, 0.0).into(),
@@ -840,8 +856,25 @@ fn generate_player_cubes(
         })
         .with_children(|parent| {
             let player_tile_count = player_tile_count as f32 / max_tile_count as f32;
+            let mut color = Color::WHITE;
 
-            for index in 0..10 {
+            if player_tile_count > 0.0 {
+                color = player_colors.get_color(player_id);
+            };
+            parent.spawn(NodeBundle {
+                style: Style {
+                    size: Size::new(Val::Px(10.0), Val::Px(25.0)),
+                    position_type: PositionType::Relative,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    margin: UiRect::all(Val::Px(5.0)),
+                    ..default()
+                },
+                background_color: BackgroundColor::from(color),
+                ..default()
+            });
+
+            for index in 1..=10 {
                 let mut color = Color::WHITE;
 
                 if index as f32 / 10.0 < player_tile_count {
