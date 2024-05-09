@@ -1,27 +1,52 @@
-﻿use crate::buildings::{
-    check_is_colorable, get_neighbors_tilepos, tile_cost_check, Activate, Building, TileNode,
-};
+﻿use std::hash::Hash;
+
+use crate::buildings::{Activate, Building};
 use crate::color_system::{convert_tile, ColorConflictEvent, TileColor, TileColorStrength};
-use bevy::prelude::{
-    Commands, Component, Entity, EventWriter, FromReflect, Mut, Query, Reflect, With, Without,
-};
-use bevy::utils::hashbrown::HashMap;
-use bevy::utils::petgraph::visit::Walker;
-use bevy_ecs_tilemap::prelude::{TilePos, TileStorage, TilemapSize};
+use crate::objects::ObjectCachedMap;
+use bevy::ecs::event::EventWriter;
+use bevy::ecs::system::Commands;
+use bevy::prelude::{Component, Entity, FromReflect, Query, Reflect, With, Without};
+use bevy_ecs_tilemap::tiles::TileStorage;
 use bevy_ggf::mapping::terrain::TileTerrainInfo;
 use bevy_ggf::mapping::tiles::Tile;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+
+use bevy_ecs_tilemap::prelude::{TilePos, TilemapSize};
 use bevy_ggf::mapping::MapId;
-use bevy_ggf::object::{ObjectGridPosition, ObjectId};
+use bevy_ggf::object::ObjectId;
 use bevy_ggf::player::PlayerMarker;
 
-#[derive(Default, Clone, Eq, Hash, Debug, PartialEq, Component, Reflect, FromReflect)]
+use super::building_pathfinding::PathfindStrengthExt;
+use super::Simulate;
+
+#[derive(
+    Default,
+    Clone,
+    Eq,
+    Hash,
+    Debug,
+    PartialEq,
+    Component,
+    Reflect,
+    FromReflect,
+    Serialize,
+    Deserialize,
+)]
 pub struct Pulser {
     pub strength: u32,
     pub max_pulse_tiles: u32,
 }
+
+impl PathfindStrengthExt for Pulser {
+    fn pathfinding_strength(&self) -> u32 {
+        self.strength
+    }
+}
+
 // two parts - we pulse outwards, checking the outside neighbors of each tile. If the outside neighbors
 // are not the same player then we damage their color by one. Otherwise at that point we stop.
-pub fn simulate_pulsers(
+pub fn simulate_pulsers_from_cache(
     mut tile_storage_query: Query<(Entity, &MapId, &TileStorage, &TilemapSize)>,
     pulsers: Query<
         (
@@ -29,9 +54,9 @@ pub fn simulate_pulsers(
             &ObjectId,
             &PlayerMarker,
             &Building<Pulser>,
-            &ObjectGridPosition,
+            &ObjectCachedMap,
         ),
-        (Without<MapId>, With<Activate>),
+        (Without<MapId>, With<Activate>, With<Simulate>),
     >,
     mut tiles: Query<
         (
@@ -44,115 +69,71 @@ pub fn simulate_pulsers(
     mut event_writer: EventWriter<ColorConflictEvent>,
     mut commands: Commands,
 ) {
-    let Some((_, _, tile_storage, tilemap_size)) = tile_storage_query
+    let Some((_, _, tile_storage, _)) = tile_storage_query
         .iter_mut()
-        .find(|(_, id, _, _)| id == &&MapId{ id: 1 })else{
+        .find(|(_, id, _, _)| id == &&MapId { id: 1 })
+    else {
         return;
-        };
+    };
+    let mut rng = rand::thread_rng();
 
-    for (entity, id, player_marker, pulser, object_grid_position) in pulsers.iter() {
-        let mut tiles_info: HashMap<TilePos, TileNode> = HashMap::new();
+    for (entity, id, player_marker, pulser, cache) in pulsers.iter() {
+        commands.entity(entity).remove::<Activate>();
+
         let mut tiles_changed: u32 = 0;
-        // insert the starting node at the moving objects grid position
-        tiles_info.insert(
-            object_grid_position.tile_position,
-            TileNode {
-                tile_pos: object_grid_position.tile_position,
-                prior_node: object_grid_position.tile_position,
-                cost: Some(0),
-            },
-        );
+        let mut target_tiles = vec![];
 
-        event_writer.send(ColorConflictEvent {
-            from_object: *id,
-            tile_pos: object_grid_position.tile_position,
-            player: player_marker.id(),
-        });
-
-        // unvisited nodes
-        let mut unvisited_tiles: Vec<TileNode> = vec![TileNode {
-            tile_pos: object_grid_position.tile_position,
-            prior_node: object_grid_position.tile_position,
-            cost: Some(0),
-        }];
-        let mut visited_nodes: Vec<TilePos> = vec![];
-
-        while !unvisited_tiles.is_empty() && tiles_changed < pulser.building_type.max_pulse_tiles {
-            unvisited_tiles.sort_by(|x, y| x.cost.unwrap().partial_cmp(&y.cost.unwrap()).unwrap());
-
-            let Some(current_node) = unvisited_tiles.get(0) else {
+        for (index, tile) in cache.cache.iter().enumerate() {
+            let Some(tile_entity) = tile_storage.get(&Into::<TilePos>::into(*tile)) else {
                 continue;
             };
 
-            let neighbor_pos = get_neighbors_tilepos(current_node.tile_pos, &tilemap_size);
-
-            let current_node = *current_node;
-            let mut neighbors: Vec<(TilePos, Entity)> = vec![];
-            for neighbor in neighbor_pos.iter() {
-                let Some(tile_entity) = tile_storage.get(neighbor) else {
-                    continue;
-                };
-                neighbors.push((*neighbor, tile_entity));
-            }
-
-            'neighbors: for neighbor in neighbors.iter() {
-                if visited_nodes.contains(&neighbor.0) {
-                    continue;
-                }
-
-                if tiles_info.contains_key(&neighbor.0) {
-                } else {
-                    let node = TileNode {
-                        tile_pos: neighbor.0,
-                        prior_node: current_node.tile_pos,
-                        cost: None,
-                    };
-                    tiles_info.insert(neighbor.0, node);
-                }
-
-                if !tile_cost_check(
-                    pulser.building_type.strength,
-                    &neighbor.0,
-                    &current_node.tile_pos,
-                    &mut tiles_info,
-                ) {
-                    continue 'neighbors;
-                }
-
-                let Some(tile_entity) = tile_storage.get(&neighbor.0) else {
-                    continue;
-                };
-
-                if let Ok((entity, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
-                    if !check_is_colorable(tile_terrain_info) {
-                        continue;
-                    }
-                    if let Some((player_marker, tile_color)) = options.as_ref() {
+            if let Ok((_, _, options)) = tiles.get_mut(tile_entity) {
+                if let Some((tile_player_marker, tile_color)) = options.as_ref() {
+                    if player_marker.id() == tile_player_marker.id() {
                         if let TileColorStrength::Five = tile_color.tile_color_strength {
                         } else {
-                            tiles_changed = tiles_changed + 1;
+                            target_tiles.push((index, tile));
                         }
                     } else {
-                        tiles_changed = tiles_changed + 1;
+                        target_tiles.push((index, tile));
                     }
-                    if convert_tile(
-                        id,
-                        &player_marker.id(),
-                        neighbor.0,
-                        tile_terrain_info,
-                        &options,
-                        &mut event_writer,
-                    ) {
-                        unvisited_tiles.push(*tiles_info.get_mut(&neighbor.0).expect(
-                                "Is safe because we know we add the node in at the beginning of this loop",
-                            ));
-                    }
+                } else {
+                    target_tiles.push((index, tile));
+                }
+
+                if target_tiles.len() >= (pulser.building_type.max_pulse_tiles + 3) as usize {
+                    break;
                 }
             }
-
-            unvisited_tiles.remove(0);
-            visited_nodes.push(current_node.tile_pos);
         }
-        commands.entity(entity).remove::<Activate>();
+
+        while target_tiles.len() > pulser.building_type.max_pulse_tiles as usize {
+            let removal_index: usize = rng.gen_range(1..target_tiles.len());
+            target_tiles.remove(removal_index);
+        }
+
+        for (_, tile) in target_tiles.iter() {
+            let Some(tile_entity) = tile_storage.get(&Into::<TilePos>::into(**tile)) else {
+                continue;
+            };
+
+            if let Ok((_, tile_terrain_info, options)) = tiles.get_mut(tile_entity) {
+                if convert_tile(
+                    id,
+                    &player_marker.id(),
+                    Into::<TilePos>::into(**tile),
+                    tile_terrain_info,
+                    &options,
+                    &mut event_writer,
+                ) {
+                    tiles_changed += 1;
+                }
+            }
+        }
+
+        if tiles_changed == 0 {
+            commands.entity(entity).remove::<Simulate>();
+        }
     }
 }

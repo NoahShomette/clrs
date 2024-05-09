@@ -1,21 +1,14 @@
 use crate::abilities::Abilities;
 use crate::actions::game_control::{place_ability, place_building};
-use bevy::prelude::KeyCode::Pause;
 use bevy::prelude::*;
-use bevy_ascii_terminal::{StringFormatter, Terminal};
-use bevy_ecs_tilemap::prelude::TilePos;
-use bevy_ggf::game_core::Game;
-use bevy_ggf::mapping::tiles::Tile;
-use bevy_ggf::object::Object;
-use bevy_ggf::player::{Player, PlayerMarker};
-use ns_defaults::camera::CursorWorldPos;
+use bevy_ggf::game_core::saving::{BinaryComponentId, SaveId};
+use bevy_ggf::mapping::tiles::TilePosition;
+use bevy_ggf::player::PlayerMarker;
+use serde::{Deserialize, Serialize};
 
 use crate::buildings::BuildingTypes;
-use crate::color_system::PlayerColors;
-use crate::game::draw::draw_game;
-use crate::game::{simulate_game, GameBuildSettings, GameData, BORDER_PADDING_TOTAL};
-use crate::menu::MenuNavigation;
-use crate::GameState;
+use crate::game::simulate_game;
+use crate::{GamePausedState, GameState};
 
 mod game_control;
 
@@ -26,26 +19,24 @@ pub struct ActionsPlugin;
 impl Plugin for ActionsPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(update_actions.in_set(OnUpdate(GameState::Playing)));
-        app.add_system(paused_controls.in_set(OnUpdate(GameState::Paused)));
-        app.add_system(ended_controls.in_set(OnUpdate(GameState::Ended)));
         app.add_system(handle_pause);
 
         app.add_system(
             place_building
                 .after(simulate_game)
-                .in_schedule(CoreSchedule::FixedUpdate)
+                .in_schedule(CoreSchedule::Main)
                 .run_if(in_state(GameState::Playing)),
         );
         app.add_system(
             place_ability
                 .after(place_building)
-                .in_schedule(CoreSchedule::FixedUpdate)
+                .in_schedule(CoreSchedule::Main)
                 .run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-#[derive(Default, Component, Reflect, FromReflect)]
+#[derive(Default, Component, Reflect, FromReflect, Serialize, Deserialize)]
 #[reflect(Component)]
 pub struct Actions {
     pub try_place_building: bool,
@@ -55,8 +46,26 @@ pub struct Actions {
     pub selected_building: BuildingTypes,
     pub selected_ability: Abilities,
     pub target_world_pos: bool,
-    pub building_tile_pos: Option<TilePos>,
-    pub ability_tile_pos: Option<TilePos>,
+    pub building_tile_pos: Option<TilePosition>,
+    pub ability_tile_pos: Option<TilePosition>,
+}
+
+impl SaveId for Actions {
+    fn save_id(&self) -> BinaryComponentId {
+        21
+    }
+
+    fn save_id_const() -> BinaryComponentId
+    where
+        Self: Sized,
+    {
+        21
+    }
+
+    #[doc = r" Serializes the state of the object at the given tick into binary. Only saves the keyframe and not the curve itself"]
+    fn to_binary(&self) -> Option<Vec<u8>> {
+        bincode::serialize(self).ok()
+    }
 }
 
 #[derive(Default, Resource)]
@@ -66,138 +75,25 @@ pub struct PauseGame;
 pub struct UnPauseGame;
 
 fn handle_pause(
-    mut current_state: ResMut<State<GameState>>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut current_state: ResMut<State<GamePausedState>>,
+    mut paused_next_state: ResMut<NextState<GamePausedState>>,
     mut commands: Commands,
     pause_game: Option<Res<PauseGame>>,
     unpause_game: Option<Res<UnPauseGame>>,
 ) {
     match current_state.0 {
-        GameState::Loading => {}
-        GameState::Playing => {
+        GamePausedState::NotPaused => {
             if let Some(pause_game) = pause_game {
-                next_state.set(GameState::Paused);
+                paused_next_state.set(GamePausedState::Paused);
                 commands.remove_resource::<PauseGame>();
             }
         }
-        GameState::Paused => {
+        GamePausedState::Paused => {
             if let Some(unpause_game) = unpause_game {
-                next_state.set(GameState::Playing);
+                paused_next_state.set(GamePausedState::NotPaused);
                 commands.remove_resource::<UnPauseGame>();
             }
         }
-        GameState::Menu => {}
-        GameState::Ended => {}
-    }
-}
-
-pub fn paused_controls(
-    mut commands: Commands,
-    keyboard_input: Res<Input<KeyCode>>,
-    mut term_query: Query<&mut Terminal>,
-    game: Res<GameData>,
-    mut menu_nav: Local<MenuNavigation>,
-    mut next_state: ResMut<NextState<GameState>>,
-    tiles: Query<Entity, With<Tile>>,
-    objects: Query<Entity, With<Object>>,
-    players: Query<Entity, With<Player>>,
-    player_marker: Query<Entity, With<PlayerMarker>>,
-    player_colors: Res<PlayerColors>,
-) {
-    let mut term = term_query.single_mut();
-    let term_size = term.size();
-
-    term.put_string([0, term_size.y - 3], "PLAY".fg(Color::WHITE));
-    term.put_string([0, term_size.y - 5], "MENU".fg(Color::WHITE));
-
-    term.put_string(
-        [
-            (term_size.x / 2) - (BORDER_PADDING_TOTAL / 2),
-            game.map_size_y + (BORDER_PADDING_TOTAL / 2) + 6,
-        ],
-        "!!! PAUSED !!!".fg(player_colors.get_color(0)),
-    );
-    let max_nav = 2;
-
-    if menu_nav.0 == 0 {
-        term.put_string([0, term_size.y - 3], "PLAY".fg(player_colors.get_color(0)));
-    }
-    if menu_nav.0 == 1 {
-        term.put_string([0, term_size.y - 5], "MENU".fg(player_colors.get_color(0)));
-    }
-
-    if keyboard_input.just_pressed(KeyCode::Escape) {
-        commands.insert_resource(UnPauseGame);
-    }
-
-    if keyboard_input.just_pressed(KeyCode::W) {
-        menu_nav.0 = menu_nav.0.saturating_sub(1);
-    }
-    if keyboard_input.just_pressed(KeyCode::S) {
-        menu_nav.0 = menu_nav.0.saturating_add(1);
-        let max_nav = 1;
-
-        if menu_nav.0 > max_nav {
-            menu_nav.0 = max_nav;
-        }
-    }
-
-    if menu_nav.0 == 0 && keyboard_input.just_pressed(KeyCode::Space)
-        || keyboard_input.just_pressed(KeyCode::Insert)
-    {
-        next_state.set(GameState::Playing);
-    }
-
-    if menu_nav.0 == 1 && keyboard_input.just_pressed(KeyCode::Space)
-        || keyboard_input.just_pressed(KeyCode::Insert)
-    {
-        next_state.set(GameState::Menu);
-
-        for entity in tiles.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in objects.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in players.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in player_marker.iter() {
-            commands.entity(entity).despawn();
-        }
-
-        commands.remove_resource::<Game>();
-        commands.init_resource::<GameBuildSettings>();
-    }
-}
-
-pub fn ended_controls(
-    mut commands: Commands,
-    mut next_state: ResMut<NextState<GameState>>,
-    keyboard_input: Res<Input<KeyCode>>,
-    tiles: Query<Entity, With<Tile>>,
-    objects: Query<Entity, With<Object>>,
-    players: Query<Entity, With<Player>>,
-    player_marker: Query<Entity, With<PlayerMarker>>,
-) {
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        next_state.set(GameState::Menu);
-
-        for entity in tiles.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in objects.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in players.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in player_marker.iter() {
-            commands.entity(entity).despawn();
-        }
-
-        commands.remove_resource::<Game>();
-        commands.init_resource::<GameBuildSettings>();
     }
 }
 
@@ -206,9 +102,13 @@ pub fn update_actions(
     mut actions: Query<(&PlayerMarker, &mut Actions)>,
     keyboard_input: Res<Input<KeyCode>>,
     mut commands: Commands,
+    current_state: Res<State<GamePausedState>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
-        commands.insert_resource(PauseGame);
+        match current_state.0 {
+            GamePausedState::NotPaused => commands.insert_resource(PauseGame),
+            GamePausedState::Paused => commands.insert_resource(UnPauseGame),
+        }
     }
 
     for (player, mut actions) in actions.iter_mut() {

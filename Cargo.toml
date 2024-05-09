@@ -33,19 +33,27 @@ bevy = { version = "0.10", default-features = false }
 bevy_kira_audio = { version = "0.15" }
 bevy_asset_loader = { version = "0.15", features = ["serde", "bevy_common_assets"] }
 rand = "0.8.3"
-bevy_ggf = { git = "https://github.com/NoahShomette/bevy_ggf.git", branch = "dev" }
+bevy_ggf = { git = "https://github.com/NoahShomette/bevy_ggf.git", branch = "rework-game-away-from-reflection" }
 ns_defaults = { git = "https://github.com/NoahShomette/ns_defaults.git" }
 bevy_ecs_tilemap = "0.10.0"
-bevy_ascii_terminal = "0.12.4"
 leafwing-input-manager = "0.9.1"
 num = "0.4.0"
 serde = "1.0.160"
 bevy_common_assets = { version = "0.6.0", features = ["ron", "serde_ron", "json", "serde_json"] }
+bevy_vector_shapes = "0.4.4"
+bevy_tweening = "0.7.0"
+bincode = { version = "*" }
+
 
 # keep the following in sync with Bevy's dependencies
 winit = { version = "0.28", default-features = false }
 image = { version = "0.24", default-features = false }
+bevy-inspector-egui = "0.18.3"
+bevy_splash_screen = "0.3.0"
 
 
 [build-dependencies]
 embed-resource = "1.4"
+
+[patch.crates-io]
+bevy_tweening = { git = "https://github.com/sibsibsib/bevy_tweening", branch = "mirrored_repeat_fix" }
