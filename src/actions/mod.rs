@@ -75,7 +75,7 @@ pub struct PauseGame;
 pub struct UnPauseGame;
 
 fn handle_pause(
-    mut current_state: ResMut<State<GamePausedState>>,
+    current_state: ResMut<State<GamePausedState>>,
     mut paused_next_state: ResMut<NextState<GamePausedState>>,
     mut commands: Commands,
     pause_game: Option<Res<PauseGame>>,
@@ -83,13 +83,13 @@ fn handle_pause(
 ) {
     match current_state.0 {
         GamePausedState::NotPaused => {
-            if let Some(pause_game) = pause_game {
+            if pause_game.is_some() {
                 paused_next_state.set(GamePausedState::Paused);
                 commands.remove_resource::<PauseGame>();
             }
         }
         GamePausedState::Paused => {
-            if let Some(unpause_game) = unpause_game {
+            if unpause_game.is_some() {
                 paused_next_state.set(GamePausedState::NotPaused);
                 commands.remove_resource::<UnPauseGame>();
             }
@@ -129,44 +129,24 @@ pub fn update_actions(
                 actions.target_world_pos = true;
             }
 
-            if keyboard_input.just_pressed(KeyCode::W) || keyboard_input.pressed(KeyCode::Up) {
-                match actions.selected_ability {
-                    Abilities::Nuke => {
-                        actions.selected_ability = Abilities::Fortify;
-                    }
-                    Abilities::Fortify => {
-                        actions.selected_ability = Abilities::Expand;
-                    }
-                    Abilities::Expand => {}
-                }
+            if keyboard_input.just_pressed(KeyCode::Q) {
+                actions.selected_building = BuildingTypes::Pulser
+            }
+            if keyboard_input.just_pressed(KeyCode::W) {
+                actions.selected_building = BuildingTypes::Scatter
+            }
+            if keyboard_input.just_pressed(KeyCode::E) {
+                actions.selected_building = BuildingTypes::Line
             }
 
-            if keyboard_input.just_pressed(KeyCode::S) || keyboard_input.pressed(KeyCode::Down) {
-                match actions.selected_ability {
-                    Abilities::Nuke => {}
-                    Abilities::Fortify => {
-                        actions.selected_ability = Abilities::Nuke;
-                    }
-                    Abilities::Expand => {
-                        actions.selected_ability = Abilities::Fortify;
-                    }
-                }
+            if keyboard_input.just_pressed(KeyCode::A) {
+                actions.selected_ability = Abilities::Nuke;
             }
-
-            if keyboard_input.just_pressed(KeyCode::A) || keyboard_input.pressed(KeyCode::Left) {
-                match actions.selected_building {
-                    BuildingTypes::Pulser => {}
-                    BuildingTypes::Scatter => actions.selected_building = BuildingTypes::Pulser,
-                    BuildingTypes::Line => actions.selected_building = BuildingTypes::Scatter,
-                }
+            if keyboard_input.just_pressed(KeyCode::S) {
+                actions.selected_ability = Abilities::Fortify;
             }
-
-            if keyboard_input.just_pressed(KeyCode::D) || keyboard_input.pressed(KeyCode::Right) {
-                match actions.selected_building {
-                    BuildingTypes::Pulser => actions.selected_building = BuildingTypes::Scatter,
-                    BuildingTypes::Scatter => actions.selected_building = BuildingTypes::Line,
-                    BuildingTypes::Line => {}
-                }
+            if keyboard_input.just_pressed(KeyCode::D) {
+                actions.selected_ability = Abilities::Expand;
             }
         }
     }

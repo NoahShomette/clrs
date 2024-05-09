@@ -35,6 +35,16 @@ impl Plugin for InternalAudioPlugin {
                 )
                     .chain()
                     .in_set(OnUpdate(GameState::Playing)),
+            )
+            .add_systems(
+                (apply_system_buffers, control_menu_sound)
+                    .chain()
+                    .in_set(OnUpdate(GameState::Menu)),
+            )
+            .add_systems(
+                (apply_system_buffers, control_menu_sound)
+                    .chain()
+                    .in_set(OnUpdate(GameState::Ended)),
             );
     }
 }
@@ -134,6 +144,7 @@ pub enum GameSoundEvents {
 pub enum UiSoundEvents {
     BasicButton,
     PlayerBoxAnimationEndGame,
+    PlayerBoxAnimationLostEndGame,
     GameWon,
     GameLost,
 }
@@ -237,7 +248,7 @@ fn control_menu_sound(
                 println!("Playing box sound");
                 audio
                     .play(audio_assets.box_animation.clone())
-                    .with_volume(0.3 * sound_settings.effects_sound_level.1);
+                    .with_volume(0.5 * sound_settings.effects_sound_level.1);
             }
             UiSoundEvents::GameWon => {
                 audio
@@ -247,6 +258,11 @@ fn control_menu_sound(
             UiSoundEvents::GameLost => {
                 audio
                     .play(audio_assets.game_lost.clone())
+                    .with_volume(0.3 * sound_settings.effects_sound_level.1);
+            }
+            UiSoundEvents::PlayerBoxAnimationLostEndGame => {
+                audio
+                    .play(audio_assets.lost_box_animation.clone())
                     .with_volume(0.3 * sound_settings.effects_sound_level.1);
             }
         };

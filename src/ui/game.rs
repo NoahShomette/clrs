@@ -1,6 +1,6 @@
 ﻿use crate::abilities::Abilities;
 use crate::actions::Actions;
-use crate::buildings::BuildingTypes::{Line, Pulser, Scatter};
+use crate::buildings::BuildingTypes::{self, Line, Pulser, Scatter};
 use crate::color_system::TileColor;
 use crate::game::{start_game, GameBuildSettings, GameData};
 use crate::loading::{FontAssets, TextureAssets};
@@ -16,6 +16,7 @@ use bevy_ggf::object::Object;
 use bevy_ggf::player::{Player, PlayerMarker};
 use bevy_tweening::lens::TransformScaleLens;
 use bevy_tweening::{Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween};
+use std::ops::DerefMut;
 use std::time::Duration;
 
 use crate::ui::{
@@ -40,10 +41,14 @@ impl Plugin for GameUiPlugin {
         )
         .add_system(cleanup_menu.in_schedule(OnExit(GameState::Playing)));
 
-        app.add_system(
-            handle_button_visuals
+        app.add_systems(
+            (
+                update_game_buttons_from_keyboard_selectiron,
+                apply_system_buffers,
+                handle_button_visuals,
+            )
                 .in_base_set(Update)
-                .run_if(in_state(GameState::Playing)),
+                .distributive_run_if(in_state(GameState::Playing)),
         );
         app.add_system(
             handle_selected_button
@@ -55,6 +60,66 @@ impl Plugin for GameUiPlugin {
                 .in_base_set(Update)
                 .run_if(in_state(GameState::Playing)),
         );
+    }
+}
+
+fn update_game_buttons_from_keyboard_selectiron(
+    mut interaction_query: Query<
+        (
+            &mut Interaction,
+            Option<&LineButtonMarker>,
+            Option<&PulserButtonMarker>,
+            Option<&ScatterButtonMarker>,
+            Option<&NukeButtonMarker>,
+            Option<&ExpandButtonMarker>,
+            Option<&FortifyButtonMarker>,
+        ),
+        (With<Button>, Without<DisabledButton>, With<GameButton>),
+    >,
+    actions: Query<(&PlayerMarker, &Actions), Changed<Actions>>,
+    mut last_action: Local<Actions>,
+) {
+    for (player, actions) in actions.iter() {
+        if player.id() == 0 {
+            let mut selected_building_changed = false;
+            let mut selected_ability_changed = false;
+
+            if actions.selected_building != last_action.selected_building {
+                selected_building_changed = true;
+                last_action.selected_building = actions.selected_building;
+            }
+
+            if actions.selected_ability != last_action.selected_ability {
+                selected_ability_changed = true;
+                last_action.selected_ability = actions.selected_ability;
+            }
+
+            for (mut interaction, lbm, pbm, sbm, nbm, ebm, fbm) in interaction_query.iter_mut() {
+                if selected_building_changed {
+                    if lbm.is_some() && actions.selected_building == BuildingTypes::Line {
+                        *interaction = Interaction::Clicked;
+                    }
+                    if pbm.is_some() && actions.selected_building == BuildingTypes::Pulser {
+                        *interaction = Interaction::Clicked;
+                    }
+                    if sbm.is_some() && actions.selected_building == BuildingTypes::Scatter {
+                        *interaction = Interaction::Clicked;
+                    }
+                }
+
+                if selected_ability_changed {
+                    if nbm.is_some() && actions.selected_ability == Abilities::Nuke {
+                        *interaction = Interaction::Clicked;
+                    }
+                    if ebm.is_some() && actions.selected_ability == Abilities::Expand {
+                        *interaction = Interaction::Clicked;
+                    }
+                    if fbm.is_some() && actions.selected_ability == Abilities::Fortify {
+                        *interaction = Interaction::Clicked;
+                    }
+                }
+            }
+        }
     }
 }
 
