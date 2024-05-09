@@ -56,6 +56,8 @@ pub struct AudioAssets {
     pub place_build: Handle<AudioSource>,
     #[asset(path = "audio/jump.wav")]
     pub box_animation: Handle<AudioSource>,
+    #[asset(path = "audio/cube_not_taken.wav")]
+    pub lost_box_animation: Handle<AudioSource>,
     #[asset(path = "audio/game_won.wav")]
     pub game_won: Handle<AudioSource>,
     #[asset(path = "audio/game_lost.wav")]

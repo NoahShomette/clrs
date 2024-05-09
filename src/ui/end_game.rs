@@ -349,6 +349,11 @@ fn generate_all_player_cubes(
                 menu_sound_events.send(UiSoundEvents::PlayerBoxAnimationEndGame);
                 played_sound = true;
             }
+        } else {
+            if !played_sound {
+                menu_sound_events.send(UiSoundEvents::PlayerBoxAnimationLostEndGame);
+                played_sound = true;
+            }
         }
     }
 }
