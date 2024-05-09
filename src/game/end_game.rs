@@ -1,8 +1,10 @@
+use crate::audio::UiSoundEvents;
 use crate::game::GameBuildSettings;
 use crate::mapping::map::MapTileStorage;
 use crate::mapping::MapTileIndex;
 use crate::objects::{ObjectIndex, TileToObjectIndex};
 use crate::GameState;
+use bevy::ecs::event::EventWriter;
 use bevy::ecs::system::Res;
 use bevy::prelude::{
     Commands, DespawnRecursiveExt, Entity, NextState, Query, ResMut, Resource, With,
@@ -58,9 +60,14 @@ pub fn check_game_ended(
     mut game: ResMut<Game>,
     mut commands: Commands,
     mut next_state: ResMut<NextState<GameState>>,
+    mut menu_sound_events: EventWriter<UiSoundEvents>,
 ) {
     if game.game_world.contains_resource::<GameEnded>() {
         let game_ended = game.game_world.remove_resource::<GameEnded>().unwrap();
+        match game_ended.player_won {
+            true => menu_sound_events.send(UiSoundEvents::GameWon),
+            false => menu_sound_events.send(UiSoundEvents::GameLost),
+        }
         commands.insert_resource(game_ended);
         next_state.set(GameState::Ended);
     }
@@ -122,7 +129,7 @@ pub fn update_game_end_state(
             }
 
             // We also check the tiles to see if the player is the last player. If they are then we end the game early.
-            // Because dead players cant gain money theres no point to keeping playing 
+            // Because dead players cant gain money theres no point to keeping playing
             player_tiles.remove(&0);
             if player_tiles.is_empty() {
                 // player has won

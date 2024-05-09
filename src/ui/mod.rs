@@ -17,7 +17,7 @@ use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
 use bevy::window::PrimaryWindow;
 use bevy_tweening::lens::TransformScaleLens;
-use bevy_tweening::{Animator, EaseFunction, RepeatCount, RepeatStrategy, Tween};
+use bevy_tweening::{Animator, EaseFunction, Lens, Lerp, RepeatCount, RepeatStrategy, Tween};
 use std::time::Duration;
 
 use self::dev::DevPlugin;
@@ -271,10 +271,67 @@ fn handle_button_visuals(
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct UiMarginLens {
+    /// Start position.
+    pub start: UiRect,
+    /// End position.
+    pub end: UiRect,
+}
+
+fn lerp_val(start: &Val, end: &Val, ratio: f32) -> Val {
+    match (start, end) {
+        (Val::Percent(start), Val::Percent(end)) => {
+            Val::Percent((end - start).mul_add(ratio, *start))
+        }
+        (Val::Px(start), Val::Px(end)) => Val::Px((end - start).mul_add(ratio, *start)),
+        _ => *start,
+    }
+}
+
+impl Lens<Style> for UiMarginLens {
+    fn lerp(&mut self, target: &mut Style, ratio: f32) {
+        target.margin = UiRect {
+            left: lerp_val(&self.start.left, &self.end.left, ratio),
+            right: lerp_val(&self.start.right, &self.end.right, ratio),
+            top: lerp_val(&self.start.top, &self.end.top, ratio),
+            bottom: lerp_val(&self.start.bottom, &self.end.bottom, ratio),
+        };
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct UiBackgroundColorLens {
+    /// Start color.
+    pub start: Color,
+    /// End color.
+    pub end: Color,
+}
+
+trait ColorLerper {
+    fn lerp(&self, target: &Self, ratio: f32) -> Self;
+}
+
+impl ColorLerper for Color {
+    fn lerp(&self, target: &Color, ratio: f32) -> Color {
+        let r = self.r().lerp(&target.r(), &ratio);
+        let g = self.g().lerp(&target.g(), &ratio);
+        let b = self.b().lerp(&target.b(), &ratio);
+        let a = self.a().lerp(&target.a(), &ratio);
+        Color::rgba(r, g, b, a)
+    }
+}
+
+impl Lens<BackgroundColor> for UiBackgroundColorLens {
+    fn lerp(&mut self, target: &mut BackgroundColor, ratio: f32) {
+        target.0 = self.start.lerp(&self.end, ratio);
+    }
+}
+
 fn modal_button_interaction(
     mut interaction_query: Query<
         (&Interaction, &ModalCloseButtonMarker),
-        (Changed<Interaction>, (With<Button>)),
+        (Changed<Interaction>, With<Button>),
     >,
     mut commands: Commands,
 ) {

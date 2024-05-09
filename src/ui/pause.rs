@@ -1,4 +1,5 @@
 ﻿use crate::audio::GameSoundSettings;
+use crate::game::restart_game::{RestartGame, RestartGameEvent};
 use crate::game::{start_game, GameBuildSettings};
 use crate::loading::level_loader::{LevelHandle, Levels};
 use crate::loading::FontAssets;
@@ -40,6 +41,9 @@ struct MainMenuButton;
 
 #[derive(Component)]
 struct ContinueButton;
+
+#[derive(Component)]
+struct RestartButton;
 
 fn setup_menu(
     mut commands: Commands,
@@ -191,6 +195,33 @@ fn setup_menu(
                 ..Default::default()
             })
             .insert(PauseUiThing)
+            .insert(RestartButton)
+            .insert(BasicButton)
+            .with_children(|parent| {
+                parent.spawn(TextBundle::from_section(
+                    "Restart",
+                    TextStyle {
+                        font: font_assets.fira_sans.clone(),
+                        font_size: 40.0,
+                        color: Color::BLACK,
+                    },
+                ));
+            });
+
+        parent
+            .spawn(ButtonBundle {
+                style: Style {
+                    size: Size::new(Val::Auto, Val::Px(50.0)),
+                    margin: UiRect::all(Val::Px(10.0)),
+                    padding: UiRect::all(Val::Px(10.0)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..Default::default()
+                },
+                background_color: BackgroundColor::from(Color::GRAY),
+                ..Default::default()
+            })
+            .insert(PauseUiThing)
             .insert(MainMenuButton)
             .insert(BasicButton)
             .with_children(|parent| {
@@ -209,7 +240,7 @@ fn setup_menu(
 fn button_interaction(
     mut state: ResMut<NextState<GameState>>,
     mut paused_state: ResMut<NextState<GamePausedState>>,
-    mut exit: EventWriter<AppExit>,
+    mut restart_game: EventWriter<RestartGameEvent>,
     mut player_colors: ResMut<PlayerColors>,
     keyboard_input: Res<Input<KeyCode>>,
     mut commands: Commands,
@@ -222,14 +253,23 @@ fn button_interaction(
             Option<&ContinueButton>,
             Option<&MainMenuButton>,
             Option<&SettingsButton>,
+            Option<&RestartButton>,
         ),
         (Changed<Interaction>, (With<Button>)),
     >,
     font_assets: Res<FontAssets>,
     sound_settings: Res<GameSoundSettings>,
 ) {
-    for (_, interaction, option_disabled, option_pucb, option_cb, option_mmb, option_sb) in
-        &mut interaction_query
+    for (
+        _,
+        interaction,
+        option_disabled,
+        option_pucb,
+        option_cb,
+        option_mmb,
+        option_sb,
+        option_rb,
+    ) in &mut interaction_query
     {
         if Interaction::Clicked != *interaction {
             continue;
@@ -248,6 +288,10 @@ fn button_interaction(
         if option_mmb.is_some() {
             state.set(GameState::Menu);
             paused_state.set(GamePausedState::NotPaused);
+        }
+
+        if let Some(_) = option_rb {
+            restart_game.send(RestartGameEvent);
         }
 
         if option_sb.is_some() {

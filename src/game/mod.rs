@@ -1,4 +1,6 @@
 pub mod end_game;
+pub mod game_difficulty;
+pub mod restart_game;
 pub mod state;
 
 use crate::abilities::expand::{simulate_expand_from_cache, Expand};
@@ -51,11 +53,14 @@ use bevy_ggf::object::{
 use bevy_ggf::player::{Player, PlayerMarker};
 
 use self::end_game::GameEndConditions;
+use self::game_difficulty::GameDifficulty;
+use self::restart_game::RestartGamePlugin;
 
 pub struct GameCorePlugin;
 
 impl Plugin for GameCorePlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(RestartGamePlugin);
         app.init_resource_after_loading_state::<_, GameBuildSettings>(GameState::Loading);
         app.add_system(start_game.in_schedule(OnEnter(GameState::Playing)))
             .add_system(cleanup_game.in_schedule(OnEnter(GameState::Menu)))
@@ -112,6 +117,7 @@ pub struct GameBuildSettings {
     pub max_map: usize,
     pub level_sizes: LevelsSizes,
     pub game_end_conditions: GameEndConditions,
+    pub game_difficulty: GameDifficulty,
 }
 
 #[derive(Reflect, Clone, Eq, Debug, PartialEq)]
@@ -170,14 +176,14 @@ impl GameBuildSettings {
             self.map_type = self.max_map - 1;
         }
 
-        if self.map_type > 1 {
+        if self.map_type > 0 {
             self.map_size = self.level_sizes.lists[&self.map_type].0;
         }
     }
 
     pub fn prev_map(&mut self) {
         self.map_type = self.map_type.saturating_sub(1);
-        if self.map_type > 1 {
+        if self.map_type > 0 {
             self.map_size = self.level_sizes.lists[&self.map_type].0;
         }
     }
@@ -192,7 +198,7 @@ impl FromWorld for GameBuildSettings {
                 };
 
                 for (i, level) in assets.get(&maps.levels).unwrap().levels.iter().enumerate() {
-                    if i > 1 {
+                    if i > 0 {
                         levels_sizes
                             .lists
                             .insert(i, (level.tiles[0].len() as u32, level.tiles.len() as u32));
@@ -208,6 +214,7 @@ impl FromWorld for GameBuildSettings {
                     game_end_conditions: GameEndConditions::Percentage {
                         target_percentage: 0.8,
                     },
+                    game_difficulty: GameDifficulty::Medium,
                 };
             })
         })
@@ -504,6 +511,7 @@ pub fn start_game(world: &mut World) {
                             timer_reset: 0.75,
                         },
                         BuildingMarker::default(),
+                        Simulate,
                     ),
                     player_spawn_pos,
                     MapId { id: 1 },

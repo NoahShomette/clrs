@@ -17,7 +17,7 @@ pub struct LoadingPlugin;
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         app.add_loading_state(
-            LoadingState::new(GameState::Loading).continue_to_state(GameState::Splash),
+            LoadingState::new(GameState::Loading).continue_to_state(GameState::Menu),
         )
         .add_collection_to_loading_state::<_, FontAssets>(GameState::Loading)
         .add_collection_to_loading_state::<_, AudioAssets>(GameState::Loading)
@@ -54,6 +54,12 @@ pub struct AudioAssets {
     pub menu: Handle<AudioSource>,
     #[asset(path = "audio/place_build.wav")]
     pub place_build: Handle<AudioSource>,
+    #[asset(path = "audio/jump.wav")]
+    pub box_animation: Handle<AudioSource>,
+    #[asset(path = "audio/game_won.wav")]
+    pub game_won: Handle<AudioSource>,
+    #[asset(path = "audio/game_lost.wav")]
+    pub game_lost: Handle<AudioSource>,
 }
 
 #[derive(AssetCollection, Resource)]

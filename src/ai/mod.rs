@@ -2,7 +2,7 @@ use crate::abilities::Abilities;
 use crate::actions::Actions;
 use crate::buildings::BuildingTypes;
 use crate::color_system::{ColorConflicts, TileColor, TileColorStrength};
-use crate::game::GameData;
+use crate::game::{GameBuildSettings, GameData};
 use crate::player::PlayerPoints;
 use bevy::prelude::{Commands, Entity, Query, Res, ResMut, With};
 use bevy_ecs_tilemap::prelude::{TilePos, TileStorage};
@@ -28,6 +28,7 @@ pub fn run_ai_building(
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut player_query: Query<(Entity, &mut PlayerPoints, &Player, &mut Actions)>,
     game_data: Res<GameData>,
+    game_settings: Res<GameBuildSettings>,
     mut commands: Commands,
 ) {
     let Some((_, tile_storage)) = tile_storage_query
@@ -55,7 +56,7 @@ pub fn run_ai_building(
 
         let mut rng = thread_rng();
 
-        if !rng.gen_bool(0.80) {
+        if !rng.gen_bool(game_settings.game_difficulty.ai_building_speed()) {
             continue;
         }
 
@@ -201,6 +202,7 @@ pub fn run_ai_ability(
     mut tile_storage_query: Query<(&MapId, &TileStorage)>,
     mut player_query: Query<(Entity, &mut PlayerPoints, &Player, &mut Actions)>,
     game_data: Res<GameData>,
+    game_settings: Res<GameBuildSettings>,
     mut commands: Commands,
 ) {
     let Some((_, tile_storage)) = tile_storage_query
@@ -220,7 +222,7 @@ pub fn run_ai_ability(
 
         let mut rng = thread_rng();
 
-        if rng.gen_bool(0.3) {
+        if rng.gen_bool(game_settings.game_difficulty.ai_action_speed()) {
             continue;
         }
 

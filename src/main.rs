@@ -6,7 +6,7 @@ use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
 use bevy_splash_screen::{SplashAssetType, SplashItem, SplashPlugin, SplashScreen};
-use bevy_tweening::EaseFunction;
+use bevy_tweening::{EaseFunction, TweeningPlugin};
 use bevy_vector_shapes::Shape2dPlugin;
 use clrs::{GamePlugin, GameState};
 use std::io::Cursor;
@@ -33,13 +33,13 @@ fn main() {
                 .set(ImagePlugin::default_nearest()),
         )
         //.add_plugin(ns_defaults::camera::CameraPlugin)
-        //.add_plugin(TweeningPlugin)
+        .add_plugin(TweeningPlugin)
         .add_plugin(Shape2dPlugin::default())
         .add_plugin(GamePlugin)
         .add_system(set_window_icon.on_startup())
+        /*
         .add_plugin(
             SplashPlugin::new(GameState::Splash, GameState::Menu)
-                .skipable()
                 .add_screen(SplashScreen {
                     brands: vec![SplashItem {
                         asset: SplashAssetType::SingleText(
@@ -132,7 +132,7 @@ fn main() {
                     background_color: BackgroundColor(Color::BLACK),
                     ..default()
                 }),
-        )
+        )*/
         .run();
 }
 

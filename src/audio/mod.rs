@@ -133,6 +133,9 @@ pub enum GameSoundEvents {
 
 pub enum UiSoundEvents {
     BasicButton,
+    PlayerBoxAnimationEndGame,
+    GameWon,
+    GameLost,
 }
 
 #[derive(Component)]
@@ -222,25 +225,37 @@ fn control_lost_tile_sound(
 }
 
 fn control_menu_sound(
-    actions: Query<&Actions>,
-    audio_settings: Res<MenuAudio>,
+    mut events: EventReader<UiSoundEvents>,
+    sound_settings: Res<GameSoundSettings>,
     audio_assets: Res<AudioAssets>,
     audio: Res<bevy_kira_audio::Audio>,
 ) {
-    for action in actions.iter() {
-        if action.selected_ability == Abilities::Nuke
-            && action.placed_ability
-            && audio_settings.0 < 3
-        {
-            //audio.play(audio_assets.menu.clone()).with_volume(0.3);
-        }
+    for action in events.iter() {
+        match action {
+            UiSoundEvents::BasicButton => {}
+            UiSoundEvents::PlayerBoxAnimationEndGame => {
+                println!("Playing box sound");
+                audio
+                    .play(audio_assets.box_animation.clone())
+                    .with_volume(0.3 * sound_settings.effects_sound_level.1);
+            }
+            UiSoundEvents::GameWon => {
+                audio
+                    .play(audio_assets.game_won.clone())
+                    .with_volume(0.3 * sound_settings.effects_sound_level.1);
+            }
+            UiSoundEvents::GameLost => {
+                audio
+                    .play(audio_assets.game_lost.clone())
+                    .with_volume(0.3 * sound_settings.effects_sound_level.1);
+            }
+        };
     }
 }
 
 fn control_nuke_sound(
     mut events: EventReader<GameSoundEvents>,
     sound_settings: Res<GameSoundSettings>,
-    audio_settings: Res<NukeAudio>,
     audio_assets: Res<AudioAssets>,
     audio: Res<AudioChannel<EffectSounds>>,
 ) {

@@ -6,12 +6,6 @@
         ],
     ),
     (
-        name: "Random",
-        spawn_points: [],
-        tiles: [
-        ],
-    ),
-    (
         name: "Swiss Cheese",
         spawn_points: [(1, 1), (30, 30), (30, 1), (1, 30)],
         tiles: [
